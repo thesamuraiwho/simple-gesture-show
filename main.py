@@ -3,6 +3,8 @@
 # Modified from https://github.com/PySimpleGUI/PySimpleGUI/blob/master/DemoPrograms/Demo_Img_Viewer.py
 # Modified from https://github.com/PySimpleGUI/PySimpleGUI/blob/master/DemoPrograms/Demo_Desktop_Widget_Timer.py
 
+# Inspired by AdorkaStock and Line-of-Action
+
 import PySimpleGUI as sg
 import os
 from PIL import Image, ImageTk
@@ -15,6 +17,8 @@ import time
 # TODO Feat: Set increments via a input box
 # TODO Bug: Fix timer element when selecting new images should reset rather than continue?
 
+def Radio(key, text, group_id, default=False): return sg.Radio(key=key, text=text, group_id=group_id, 
+    default=default, enable_events=True)
 
 def time_as_int():
     return int(round(time.time() * 100))
@@ -69,6 +73,31 @@ if __name__ == "__main__":
     current_time, paused_time, paused = 0, 0, False
     start_time = time_as_int()
 
+    # Get session settings
+    constant_len = [[sg.Text('Class Mode Options')], [sg.HSeparator()],
+        [Radio('-CL_30SEC-', '30 secs', 2, default=True), 
+            Radio('-CL_1MIN-', '1 min', 2),
+            Radio('-CL_2MIN-', '2 min', 2),
+            Radio('-CL_5MIN-', '5 min', 2),
+            Radio('-CL_10MIN-', '10 min', 2),
+            Radio('-CL_15MIN-', '15 min', 2),
+            Radio('-CL_30MIN-', '30 min', 2)]]
+
+    class_mode = [[sg.Text('Class Mode Options')], [sg.HSeparator()],
+        [Radio('-CM_DEFAULT-', 'Default', 3, default=True), 
+            Radio('-CM_RAPID-', 'Rapid', 3),
+            Radio('-CM_LEISURE', 'Leisure', 3)]]
+
+    session_layout = [[sg.Text('Session Type')], [sg.HSeparator()],
+        [Radio('-SESSION_CONSTANT_LEN-', 'Constant Length', 1, default=True), 
+            Radio('-SESSION_CLASS_MODE-', 'Class Mode', 1)],
+        [sg.Text()],
+        [sg.HSeparator()],
+        ]
+    
+
+    window = sg.Window('Session Settings', session_layout, keep_on_top=True, finalize=True)
+
     # Get the folder containing the images from the user
     folder = sg.popup_get_folder(background_color='#272927', message='Image folder to open', default_path='')
     if not folder:
@@ -109,24 +138,25 @@ if __name__ == "__main__":
 
     # TODO add controls for basic image maniuplation like flipping and grayscale
     col_files = [[filename_display_elem],
-                 [sg.Listbox(values=fnames, change_submits=True, size=(50, 30), key='listbox')], # TODO display thumbnails instead of filenames
-                 [sg.Button('Prev', size=(8, 2)), sg.Button('Next', size=(8, 2)), file_num_display_elem],
+                 [sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(50, 30))],
+                 [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
+                    sg.Button(key='-NEXT-', button_text='Next', size=(8, 2)), file_num_display_elem],
                  [sg.Text('')],
-                 [sg.Text('', size=(8, 2), font=('Helvetica', 20),
-                          justification='center', key='text')],
+                 [sg.Text(key='-TIMER-', text='', size=(8, 2), font=('Helvetica', 20), justification='center')],
                  [sg.Text('Timer adjustment')],
-                 [sg.Text(key='current-timeout', text='Current timeout: 1 Minute')],
-                 [sg.Input(key='-TIMER-VALUE-', default_text=1)],
-                 [sg.Button(button_text='-', key='-DEC-TIMER-', button_color=('white', '#00F'), size=(8, 2)),
-                  sg.Button(button_text='+', key='-INC-TIMER-', button_color=('white', '#FFA500'), size=(8, 2))],
-                 [sg.Button(button_text='Pause', key='-RUN-PAUSE-', button_color=('white', '#001480'), size=(8, 2)),
-                  sg.Button(button_text='Reset', key='-RESET-', button_color=('white', '#007339'), size=(8, 2)),
-                  sg.Exit(button_text='Exit', key='Exit', button_color=('white', 'firebrick4'), size=(8, 2))]
-                 ]
+                 [sg.Text(key='-CUR-TIMEOUT-', text='Current timeout: 1 Minute')],
+                 [sg.Input(key='-TIMER-VALUE-', default_text=1), 
+                    sg.Radio(key='-MIN-', text='Minutes', group_id=1, enable_events=True, default=True),
+                    sg.Radio(key='-SEC-', text='Seconds', group_id=1, enable_events=True)],
+                 [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
+                    sg.Button(key='-INC-TIMER-', button_text='+', button_color=('white', '#FFA500'), size=(8, 2))],
+                 [sg.Button(key='-RUN-PAUSE-', button_text='Pause', button_color=('white', '#001480'), size=(8, 2)),
+                    sg.Button(key='-RESET-', button_text='Reset', button_color=('white', '#007339'), size=(8, 2)),
+                    sg.Exit(key='-EXIT-', button_text='Exit', button_color=('white', 'firebrick4'), size=(8, 2))]]
 
     layout = [[sg.Column(vertical_alignment='top', layout=col_files), sg.Column(vertical_alignment='top', layout=col)]]
 
-    window = sg.Window('Image Browser', layout, return_keyboard_events=True,
+    window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
                        location=(0, 0), size=(1920, 1080), background_color='#272927',
                        resizable=True, use_default_focus=False)
 
@@ -145,7 +175,7 @@ if __name__ == "__main__":
         # print(f"Event: {event}, Values: {values}")
         # perform button and keyboard operations
 
-        if event in (sg.WIN_CLOSED, 'Exit'):
+        if event in (sg.WIN_CLOSED, '-EXIT-'):
             break
         elif event == '-DEC-TIMER-':
             if NEXTIMGTIMEOUT > 6000:
@@ -157,7 +187,7 @@ if __name__ == "__main__":
                 # TODO fix current timeout display
                 new_text = f"Current timeout: {NEXTIMGTIMEOUT // 6000} Minute{s}"
                 print(new_text)
-                window['current-timeout'].update(value=new_text)
+                window['-CUR-TIMEOUT-'].update(value=new_text)
         elif event == '-INC-TIMER-':
             if NEXTIMGTIMEOUT < 6000 * 60:
                 NEXTIMGTIMEOUT += 6000
@@ -169,7 +199,7 @@ if __name__ == "__main__":
                 # TODO fix current timeout display
                 new_text = f"Current timeout: {NEXTIMGTIMEOUT // 6000} Minute{s}"
                 print(new_text)
-                window['current-timeout'].update(value=new_text)
+                window['-CUR-TIMEOUT-'].update(value=new_text)
         elif event == '-RESET-':
             paused_time = start_time = time_as_int()
             current_time = 0
@@ -193,8 +223,8 @@ if __name__ == "__main__":
                 i = num_files + i
             filename = os.path.join(folder, fnames[i])
             current_time = 0
-        elif event == 'listbox':            # something from the listbox
-            f = values["listbox"][0]            # selected filename
+        elif event == '-LISTBOX-':              # something from the listbox
+            f = values['-LISTBOX-'][0]          # selected filename
             filename = os.path.join(folder, f)  # read this file
             i = fnames.index(f)                 # update running index
         else:
@@ -211,10 +241,7 @@ if __name__ == "__main__":
             filename = os.path.join(folder, fnames[i])
 
         # --------- Display timer in window --------
-        # window['text'].update('{:02d}:{:02d}.{:02d}'.format((current_time // 100) // 60,
-        #                                                     (current_time // 100) % 60,
-        #                                                     current_time % 100))
-        window['text'].update('{:02d}:{:02d}'.format((current_time // 100) // 60,
+        window['-TIMER-'].update('{:02d}:{:02d}'.format((current_time // 100) // 60,
                                                      (current_time // 100) % 60))
 
         # update window with new image
