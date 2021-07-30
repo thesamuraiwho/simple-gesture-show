@@ -1,4 +1,4 @@
-PySimpleGUI
+pysimplegui
 pillow
 requests
 python-dotenv
