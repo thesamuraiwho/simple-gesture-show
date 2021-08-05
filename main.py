@@ -78,43 +78,12 @@ def get_img_data(f, maxsize=(1200, 850), first=False):
 
 
 def main():
+    sg.theme('lightgreen6')
     current_time, paused_time, paused = 0, 0, True
-    session_mode = "cl"
+    session_mode = Session_Mode.CONSTANT
     start_time = time_as_int()
-
-    # Get session settings
-    constant_len = [[sg.Text('Class Mode Options')], [sg.HSeparator()],
-        [Radio('-CL_30SEC-', '30 secs', 2, default=True), 
-            Radio('-CL_1MIN-', '1 min', 2),
-            Radio('-CL_2MIN-', '2 min', 2),
-            Radio('-CL_5MIN-', '5 min', 2),
-            Radio('-CL_10MIN-', '10 min', 2),
-            Radio('-CL_15MIN-', '15 min', 2),
-            Radio('-CL_30MIN-', '30 min', 2)]]
-
-    class_mode = [[sg.Text('Class Mode Options')], [sg.HSeparator()],
-        [Radio('-CM_DEFAULT-', 'Default', 3, default=True), 
-            Radio('-CM_RAPID-', 'Rapid', 3),
-            Radio('-CM_LEISURE', 'Leisure', 3)]]
-
-    custom_mode = [[sg.Text('Timer adjustment')],
-        [sg.Text(key='-CUR-TIMEOUT-', text='Current timeout: 1 Minute')],
-        [sg.Input(key='-TIMER-VALUE-', default_text=1)],
-        [sg.Radio(key='-MIN-', text='Minutes', group_id=1, enable_events=True, default=True),
-            sg.Radio(key='-SEC-', text='Seconds', group_id=1, enable_events=True)],
-        [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
-            sg.Button(key='-INC-TIMER-', button_text='+', button_color=('white', '#FFA500'), size=(8, 2))]]
-
-    session = [[sg.Text('Session Type')], [sg.HSeparator()],
-        [Radio('-SESSION_CONSTANT_LEN-', 'Constant Length', 1, default=True), 
-            Radio('-SESSION_CLASS_MODE-', 'Class Mode', 1),
-            Radio('-SESSION_CUSTOM_MODE-', 'Custom Mode', 1)],
-        [sg.HSeparator()]]
-
-    # temp
     folder = ""
     fnames = []
-    # filename_display_elem = sg.Text('Placeholder')
     file_num_display_elem = sg.Text(key='-FILE_NUM-', text='', size=(15,1))
     image_elem = sg.Image(key='-IMAGE_ELEM-', data=None)
     col = [[image_elem]]
@@ -125,41 +94,60 @@ def main():
         enable_events=True,
         key="-FOLDER_BROWSER-")]]
 
-    files = [#[filename_display_elem],
-                 [sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(50, 30))],
-                 [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
-                    sg.Button(key='-NEXT-', button_text='Next', size=(8, 2)), file_num_display_elem]]
+    files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(50, 20))],
+        [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
+            sg.Button(key='-NEXT-', button_text='Next', size=(8, 2)), file_num_display_elem]]
+
+    # Get session settings
+    session = [[sg.Text('Session Type')], [sg.HSeparator()],
+        [Radio('-SESSION_CONST_MODE-', 'Constant Length', 1, default=True), 
+            Radio('-SESSION_CLASS_MODE-', 'Class Mode', 1),
+            Radio('-SESSION_CUSTM_MODE-', 'Custom Mode', 1)]]
+
+    const_mode = [[sg.Text('Constant Mode Options')], [sg.HSeparator()],
+        [Radio('-CONST_30SEC-', '30 secs', 2, default=True), 
+            Radio('-CONST_1MIN-', '1 min', 2),
+            Radio('-CONST_2MIN-', '2 min', 2),
+            Radio('-CONST_5MIN-', '5 min', 2),
+            Radio('-CONST_10MIN-', '10 min', 2),
+            Radio('-CONST_15MIN-', '15 min', 2),
+            Radio('-CONST_30MIN-', '30 min', 2)]]
+
+    class_mode = [[sg.Text('Class Mode Options')], [sg.HSeparator()],
+        [Radio('-CLASS_DEFAULT-', 'Default', 3, default=True), 
+            Radio('-CLASS_RAPID-', 'Rapid', 3),
+            Radio('-CLASS_LEISURE', 'Leisure', 3)]]
+
+    custm_mode = [[sg.Text('Custom Mode Timer Adjustment')], [sg.HSeparator()],
+        [sg.Text(key='-CUR-TIMEOUT-', text='Current timeout: 1 Minute'), 
+            sg.Input(key='-TIMER-VALUE-', default_text=1, size=(8, 2)), 
+            sg.Radio(key='-MIN-', text='Minutes', group_id=4, enable_events=True, default=True),
+            sg.Radio(key='-SEC-', text='Seconds', group_id=4, enable_events=True)],
+        [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
+            sg.Button(key='-INC-TIMER-', button_text='+', button_color=('white', '#FFA500'), size=(8, 2))]]
                 
     timer_layout = [[sg.Text(key='-TIMER-', text='00:00', size=(4, 1), font=('Helvetica', 32), justification='center')],
-                #  [sg.Text('Timer adjustment')],
-                #  [sg.Text(key='-CUR-TIMEOUT-', text='Current timeout: 1 Minute')],
-                #  [sg.Input(key='-TIMER-VALUE-', default_text=1)],
-                #  [sg.Radio(key='-MIN-', text='Minutes', group_id=1, enable_events=True, default=True),
-                #     sg.Radio(key='-SEC-', text='Seconds', group_id=1, enable_events=True)],
-                #  [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
-                #     sg.Button(key='-INC-TIMER-', button_text='+', button_color=('white', '#FFA500'), size=(8, 2))],
-                 [sg.Button(key='-RUN-PAUSE-', button_text='Pause', button_color=('white', '#001480'), size=(8, 2)),
-                    sg.Button(key='-RESET-', button_text='Reset', button_color=('white', '#007339'), size=(8, 2)),
-                    sg.Exit(key='-EXIT-', button_text='Exit', button_color=('white', 'firebrick4'), size=(8, 2))]]
+        [sg.Button(key='-RUN-PAUSE-', button_text='Run', button_color=('white', '#001480'), size=(8, 2)),
+            sg.Button(key='-RESET-', button_text='Reset', button_color=('white', '#007339'), size=(8, 2)),
+            sg.Exit(key='-EXIT-', button_text='Exit', button_color=('white', 'firebrick4'), size=(8, 2))]]
 
-    layout = [[sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=folder_browser + files + session + timer_layout), sg.Column(vertical_alignment='top', layout=col)]]
-
-
-    # layout_cl = [[sg.Column(key="-LAYOUT_CL-", vertical_alignment='top', layout=files + session + constant_len), 
-    #     sg.Column(vertical_alignment='top', layout=col, visible=True)]]
-    # layout_cm = [[sg.Column(key="-LAYOUT_CM-", vertical_alignment='top', layout=files + session + class_mode), 
-    #     sg.Column(vertical_alignment='top', layout=col, visible=False)]]
+    layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
+    layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
+    layout_custm = [[sg.Column(custm_mode, key="-LAYOUT_CUSTM-", visible=False)]]
+    layout = [[sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=folder_browser + files + session 
+        + layout_const + layout_class + layout_custm + timer_layout), sg.Column(vertical_alignment='top', layout=col)]]
 
     # loop reading the user input and displaying image, filename
     NEXTIMGTIMEOUT = 6000 #1000
     i = 0
+    MODES_KEYS = ["-SESSION_CONST_MODE-", "-SESSION_CLASS_MODE-", "-SESSION_CUSTM_MODE-"]
+    MODES_VALUES = ["-LAYOUT_CONST-", "-LAYOUT_CLASS-", "-LAYOUT_CUSTM-"]
 
     window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
                        location=(0, 0), size=(1920, 1080), background_color='#272927',
                        resizable=True, use_default_focus=False)
 
-    MODES_KEYS = ["-SESSION_CONSTANT_MODE-", "-SESSION_CLASS_MODE-", "-SESSION_CUSTOM_MODE-"]
-    MODES_VALUES = ["const", "class", "custm"]
+
 
     while True:
         # if window is None:
@@ -234,12 +222,15 @@ def main():
             if event in MODES_KEYS:
                 for i in range(len(MODES_KEYS)):
                     if values[MODES_KEYS[i]]:
-                        session_mode = MODES_KEYS[i]
-                        window[f''].update(visible=False)
-                        window[f''].update(visible=True)
+                        session_mode = Session_Mode(i)
+                        new_layout = MODES_VALUES[i]
+                        for lay in MODES_VALUES:
+                            window[lay].update(visible=False)
+                        window[new_layout].update(visible=True)
+                        break
                 print(session_mode)
 
-            if session_mode == "custom_mode":
+            if session_mode == Session_Mode.CUSTOM:
                 if event == '-DEC-TIMER-':
                     if NEXTIMGTIMEOUT > 6000:
                         NEXTIMGTIMEOUT -= 6000
@@ -293,7 +284,6 @@ def main():
             else:
                 filename = os.path.join(folder, fnames[i])
 
-            # print(f"current time = {current_time}")
             if current_time > NEXTIMGTIMEOUT:
                 print("\n\n\nRESET\n\n\n")
                 paused_time = start_time = time_as_int()
