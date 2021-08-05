@@ -38,7 +38,6 @@ def get_img_data(f, maxsize=(1200, 850), first=False):
     """Generate image data using PIL
     """
 
-
     img = Image.open(f)
     img_size = img.size
     img_width, img_height = img_size
@@ -92,6 +91,7 @@ def main():
     folder_browser = [[sg.FolderBrowse(button_text="Browse",
         initial_folder=os.getcwd(),
         enable_events=True,
+        font=('Helvetica', 32),
         key="-FOLDER_BROWSER-")]]
 
     files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(50, 20))],
@@ -108,10 +108,11 @@ def main():
         [Radio('-CONST_30SEC-', '30 secs', 2, default=True), 
             Radio('-CONST_1MIN-', '1 min', 2),
             Radio('-CONST_2MIN-', '2 min', 2),
-            Radio('-CONST_5MIN-', '5 min', 2),
-            Radio('-CONST_10MIN-', '10 min', 2),
+            Radio('-CONST_5MIN-', '5 min', 2)],
+        [Radio('-CONST_10MIN-', '10 min', 2),
             Radio('-CONST_15MIN-', '15 min', 2),
-            Radio('-CONST_30MIN-', '30 min', 2)]]
+            Radio('-CONST_30MIN-', '30 min', 2),
+            Radio('-CONST_60MIN-', '60 min', 2)]]
 
     class_mode = [[sg.Text('Class Mode Options')], [sg.HSeparator()],
         [Radio('-CLASS_DEFAULT-', 'Default', 3, default=True), 
@@ -134,11 +135,11 @@ def main():
     layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
     layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
     layout_custm = [[sg.Column(custm_mode, key="-LAYOUT_CUSTM-", visible=False)]]
-    layout = [[sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=folder_browser + files + session 
-        + layout_const + layout_class + layout_custm + timer_layout), sg.Column(vertical_alignment='top', layout=col)]]
+    layout = [[folder_browser], [sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=files + session 
+        + layout_const + layout_class + layout_custm + timer_layout), sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col)]]
 
     # loop reading the user input and displaying image, filename
-    NEXTIMGTIMEOUT = 6000 #1000
+    NEXTIMGTIMEOUT = 6000 # 1 minute or 6000 ms
     i = 0
     MODES_KEYS = ["-SESSION_CONST_MODE-", "-SESSION_CLASS_MODE-", "-SESSION_CUSTM_MODE-"]
     MODES_VALUES = ["-LAYOUT_CONST-", "-LAYOUT_CLASS-", "-LAYOUT_CUSTM-"]
@@ -146,8 +147,6 @@ def main():
     window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
                        location=(0, 0), size=(1920, 1080), background_color='#272927',
                        resizable=True, use_default_focus=False)
-
-
 
     while True:
         # if window is None:
@@ -165,6 +164,7 @@ def main():
             # Get the folder containing the images from the user
             folder = values['-FOLDER_BROWSER-']
             if not folder:
+                # TODO Should gracefully allow re-browsing
                 sg.popup_cancel('Cancelling')
                 raise SystemExit()
 
@@ -183,6 +183,7 @@ def main():
 
             num_files = len(fnames)  # number of images found
             if num_files == 0:
+                # TODO Should gracefully allow re-browsing
                 sg.popup('No files in folder')
                 raise SystemExit()
 
@@ -230,7 +231,11 @@ def main():
                         break
                 print(session_mode)
 
-            if session_mode == Session_Mode.CUSTOM:
+            if session_mode == Session_Mode.CONSTANT:
+                pass
+            elif session_mode == Session_Mode.CLASS:
+                pass
+            elif session_mode == Session_Mode.CUSTOM:
                 if event == '-DEC-TIMER-':
                     if NEXTIMGTIMEOUT > 6000:
                         NEXTIMGTIMEOUT -= 6000
@@ -265,7 +270,7 @@ def main():
                     start_time = start_time + time_as_int() - paused_time
                 # Change button's text
                 window['-RUN-PAUSE-'].update('Run' if paused else 'Pause')
-            elif event in ('-NEXT-', 'Down:40', 'Next:34'):
+            if event in ('-NEXT-', 'Down:40', 'Next:34'):
                 i += 1
                 if i >= num_files:
                     i -= num_files
