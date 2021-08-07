@@ -23,10 +23,21 @@ from enum import Enum
 #   to avoid redoing image processing work
 
 # Constants
-SEC = 1000 # 1000ms == 1 sec
-MIN = 60000 # 60000ms == 1 min
+SEC = 100 # 1000ms == 1 sec
+MIN = 6000 # 60000ms == 1 min
 MODES_KEYS = ["-SESSION_CONST_MODE-", "-SESSION_CLASS_MODE-", "-SESSION_CUSTM_MODE-"]
 MODES_VALUES = ["-LAYOUT_CONST-", "-LAYOUT_CLASS-", "-LAYOUT_CUSTM-"]
+
+CONST_KEYS = ['-CONST_30SEC-', '-CONST_1MIN-', '-CONST_2MIN-', '-CONST_5MIN-', 
+    '-CONST_10MIN-', '-CONST_15MIN-', '-CONST_30MIN-', '-CONST_60MIN-']
+CONST_VALUES = [int(0.5 * MIN), MIN, 2 * MIN, 5 * MIN, 10 * MIN, 15 * MIN, 30 * MIN, 60 * MIN]
+
+CLASS_DEFAULT = [[10, int(0.5 * MIN)], [5, MIN], [2, 5 * MIN], [1, 10 * MIN]]
+CLASS_RAPID = [[4, int(0.25 * MIN)], [4, int(0.5 * MIN)], [2, MIN], [2, 5 * MIN]]
+CLASS_LEISURE = [[10, MIN], [4, 5 * MIN], [2, 15 * MIN], [1, 30 * MIN]]
+
+CUSTM_KEYS = ["-MIN-", "-SEC-"]
+CUSTM_VALUES = [MIN, SEC]
 
 class Session_Mode(Enum):
     CONSTANT = 0
@@ -35,6 +46,9 @@ class Session_Mode(Enum):
 
 def Radio(key, text, group_id, default=False): return sg.Radio(key=key, text=text, group_id=group_id, 
     default=default, enable_events=True)
+
+def Button(key, text, color="#1f6650"): return sg.Button(key=key, button_text=text, 
+    button_color=color, size=(8, 2), font=('Helvetica', 12))
 
 def time_as_int():
     return int(round(time.time() * 100))
@@ -84,7 +98,7 @@ def get_img_data(f, maxsize=(1200, 850), first=False):
 def main():
     sg.theme('lightgreen6')
     session_mode = Session_Mode.CONSTANT
-    next_timeout = 1000 # 100 = 1 seconds
+    next_timeout = 3000 #1000 # 100 = 1 seconds
     current_time, time_diff, paused = 0, next_timeout, True
     start_time = time_as_int()
     end_time = 0
@@ -99,12 +113,15 @@ def main():
     folder_browser = [[sg.FolderBrowse(button_text="Browse",
         initial_folder=os.getcwd(),
         enable_events=True,
-        font=('Helvetica', 20),
+        font=('Helvetica', 16),
         key="-FOLDER_BROWSER-")]]
 
     files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(50, 10))],
-        [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
-            sg.Button(key='-NEXT-', button_text='Next', size=(8, 2)), file_num_display_elem]]
+        [Button('-PREV-', 'Prev', color="#1f6650"), Button('-NEXT-', 'Next', color="#1f6650"), 
+            file_num_display_elem]]
+        # [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
+        #     sg.Button(key='-NEXT-', button_text='Next', size=(8, 2)), file_num_display_elem]]
+            
 
     # Get session settings
     session = [[sg.Text('Session Type')], [sg.HSeparator()],
@@ -132,19 +149,24 @@ def main():
             sg.Input(key='-TIMER-VALUE-', default_text=1, size=(8, 2)), 
             sg.Radio(key='-MIN-', text='Minutes', group_id=4, enable_events=True, default=True),
             sg.Radio(key='-SEC-', text='Seconds', group_id=4, enable_events=True)],
-        [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
-            sg.Button(key='-INC-TIMER-', button_text='+', button_color=('white', '#FFA500'), size=(8, 2))]]
+        [Button('-DEC-TIMER-', '-', color=('white', '#00F')), 
+            Button('-INC-TIMER-', '+', color=('white', '#FFA500'))]]
+        # [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
+        #     sg.Button(key='-INC-TIMER-', button_text='+', button_color=('white', '#FFA500'), size=(8, 2))]]
                 
     timer_layout = [[sg.Text(key='-TIMER-', text='00:00', size=(4, 1), font=('Helvetica', 32), justification='center')],
-        [sg.Button(key='-RUN-PAUSE-', button_text='Run', button_color=('white', '#001480'), size=(8, 2)),
-            sg.Button(key='-RESET-', button_text='Reset', button_color=('white', '#007339'), size=(8, 2)),
-            sg.Exit(key='-EXIT-', button_text='Exit', button_color=('white', 'firebrick4'), size=(8, 2))]]
+        [Button('-RUN-PAUSE-', 'Run', color=('white', '#001480')),
+            Button('-RESET-', 'Reset', color=('white', '#007339')),
+            Button('-EXIT-', 'Exit', color=('white', '#8b1a1a'))]]
+        # [sg.Button(key='-RUN-PAUSE-', button_text='Run', button_color=('white', '#001480'), size=(8, 2)),
+        #     sg.Button(key='-RESET-', button_text='Reset', button_color=('white', '#007339'), size=(8, 2)),
+        #     sg.Exit(key='-EXIT-', button_text='Exit', button_color=('white', 'firebrick4'), size=(8, 2))]]
 
     layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
     layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
     layout_custm = [[sg.Column(custm_mode, key="-LAYOUT_CUSTM-", visible=False)]]
-    layout = [[folder_browser], [sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=files + session 
-        + layout_const + layout_class + layout_custm + timer_layout), 
+    layout = [[folder_browser], [sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=files + session +
+        layout_const + layout_class + layout_custm + timer_layout), 
         sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
 
     # loop reading the user input and displaying image, filename
@@ -190,9 +212,8 @@ def main():
                 sg.popup('No files in folder')
                 raise SystemExit()
 
-            del flist0  # no longer needed
+            del flist0  # file list object deleted since it is no longer needed
 
-            # make these 2 elements outside the layout as we want to "update" them later
             # initialize to the first file in the list
             filename = os.path.join(folder, fnames[0])  # name of first file in list
             # image_elem = sg.Image(data=get_img_data(filename, first=True))
@@ -205,19 +226,10 @@ def main():
             # col = [[image_elem]]
 
             print(f"folder: {folder}\nfnames:{fnames}\nnum_files: {num_files}")
-
-            # files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(50, 30))],
-            #     [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
-            #     sg.Button(key='-NEXT-', button_text='Next', size=(8, 2)), file_num_display_elem],
-            #     [sg.Text('')]]
-            
-            # window['-CONTROLS-'].update(visible=True)
             window['-IMAGE-'].update(visible=True)
             window['-LISTBOX-'].update(values=fnames)
             window['-FILE_NUM-'].update(f'File 1 of {num_files}')
             window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
-
-            # window['-CONTROLS-'].update(layout=folder_browser + files + session + timer_layout)
 
         elif folder:
             print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
@@ -234,7 +246,15 @@ def main():
                 print(session_mode)
 
             if session_mode == Session_Mode.CONSTANT:
-                pass
+                if event in CONST_KEYS:
+                    for choice in range(len(CONST_KEYS)):
+                        if values[CONST_KEYS[choice]]:
+                            next_timeout = CONST_VALUES[choice]
+                            current_time = start_time = time_as_int()
+                            end_time = current_time + next_timeout
+                            time_diff = next_timeout
+                            print(f"event: {event}\nconst_keys: {CONST_KEYS[choice]}\nconst_values: {CONST_VALUES[choice]}\nnext_timeout: {next_timeout}")
+                            break
             elif session_mode == Session_Mode.CLASS:
                 pass
             elif session_mode == Session_Mode.CUSTOM:
@@ -286,23 +306,30 @@ def main():
                 if img >= num_files:
                     img -= num_files
                 filename = os.path.join(folder, fnames[img])
-                current_time = 0
+                current_time = start_time = time_as_int()
+                end_time = current_time + next_timeout
+                time_diff = next_timeout
             elif event == '-PREV-': #in ('-PREV-', 'Up:38', 'Prior:33'):
                 img -= 1
                 if img < 0:
                     img += num_files
                 filename = os.path.join(folder, fnames[img])
-                current_time = 0
+                current_time = start_time = time_as_int()
+                end_time = current_time + next_timeout
+                time_diff = next_timeout
             elif event == '-LISTBOX-':              # something from the listbox
                 f = values['-LISTBOX-'][0]          # selected filename
                 filename = os.path.join(folder, f)  # read this file
-                img = fnames.index(f)                 # update running index
+                img = fnames.index(f)               # update running index
+                current_time = start_time = time_as_int()
+                end_time = current_time + next_timeout
+                time_diff = next_timeout
             else:
                 filename = os.path.join(folder, fnames[img])
             
             print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
-            if time_diff <= 50 and not paused:
-                print("\n\n\nRESET\n\n\n")
+            if time_diff <= 0 and not paused:
+                print("\nRESET\n")
                 current_time = start_time = time_as_int()
                 end_time = current_time + next_timeout
                 time_diff = next_timeout
@@ -311,19 +338,10 @@ def main():
                     img %= num_files
                 filename = os.path.join(folder, fnames[img])
             elif time_diff > 0 and not paused:
-                print("\n\n\nTIMER RUNNING\n\n\n")
+                print("\nTIMER RUNNING\n")
                 current_time = time_as_int()
                 time_diff = end_time - current_time
             print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
-
-            # if current_time > NEXTIMGTIMEOUT:
-            #     print("\n\n\nRESET\n\n\n")
-            #     paused_time = start_time = time_as_int()
-            #     current_time = 0
-            #     img += 1
-            #     if img >= num_files:
-            #         img %= num_files
-            #     filename = os.path.join(folder, fnames[img])
 
             # --------- Display timer in window --------
             # window['-TIMER-'].update('{:02d}:{:02d}'.format((current_time // 100) // 60,
@@ -335,7 +353,7 @@ def main():
             image_elem.update(data=get_img_data(filename, first=True))
             window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
             # update page display
-            # file_num_display_elem.update('File {} of {}'.format(i+1, num_files))
+            file_num_display_elem.update('File {} of {}'.format(img+1, num_files))
             window.Refresh()
 
     window.close()
