@@ -32,6 +32,7 @@ CONST_KEYS = ['-CONST_30SEC-', '-CONST_1MIN-', '-CONST_2MIN-', '-CONST_5MIN-',
     '-CONST_10MIN-', '-CONST_15MIN-', '-CONST_30MIN-', '-CONST_60MIN-']
 CONST_VALUES = [int(0.5 * MIN), MIN, 2 * MIN, 5 * MIN, 10 * MIN, 15 * MIN, 30 * MIN, 60 * MIN]
 
+CLASS_KEYS = ['-CLASS_DEFAULT-', '-CLASS_RAPID-', '-CLASS_LEISURE']
 CLASS_DEFAULT = [[10, int(0.5 * MIN)], [5, MIN], [2, 5 * MIN], [1, 10 * MIN]]
 CLASS_RAPID = [[4, int(0.25 * MIN)], [4, int(0.5 * MIN)], [2, MIN], [2, 5 * MIN]]
 CLASS_LEISURE = [[10, MIN], [4, 5 * MIN], [2, 15 * MIN], [1, 30 * MIN]]
@@ -108,15 +109,15 @@ def main():
     image_elem = sg.Image(key='-IMAGE_ELEM-', data=None)
     col = [[image_elem]]
     num_files = 0
+    class_list = CLASS_DEFAULT
     
-
     folder_browser = [[sg.FolderBrowse(button_text="Browse",
         initial_folder=os.getcwd(),
         enable_events=True,
         font=('Helvetica', 16),
         key="-FOLDER_BROWSER-")]]
 
-    files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(50, 10))],
+    files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(40, 10))],
         [Button('-PREV-', 'Prev', color="#1f6650"), Button('-NEXT-', 'Next', color="#1f6650"), 
             file_num_display_elem]]
         # [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
@@ -125,12 +126,12 @@ def main():
 
     # Get session settings
     session = [[sg.Text('Session Type')], [sg.HSeparator()],
-        [Radio('-SESSION_CONST_MODE-', 'Constant Length', 1, default=True), 
-            Radio('-SESSION_CLASS_MODE-', 'Class Mode', 1),
-            Radio('-SESSION_CUSTM_MODE-', 'Custom Mode', 1)]]
+        [Radio('-SESSION_CONST_MODE-', 'Constant Length', 1, default=True)], 
+        [Radio('-SESSION_CLASS_MODE-', 'Class Mode', 1)],
+        [Radio('-SESSION_CUSTM_MODE-', 'Custom Mode', 1)]]
 
     const_mode = [[sg.Text('Constant Mode Options')], [sg.HSeparator()],
-        [Radio('-CONST_30SEC-', '30 secs', 2, default=True), 
+        [Radio('-CONST_30SEC-', '30 sec', 2, default=True), 
             Radio('-CONST_1MIN-', '1 min', 2),
             Radio('-CONST_2MIN-', '2 min', 2),
             Radio('-CONST_5MIN-', '5 min', 2)],
@@ -145,10 +146,10 @@ def main():
             Radio('-CLASS_LEISURE', 'Leisure', 3)]]
 
     custm_mode = [[sg.Text('Custom Mode Timer Adjustment')], [sg.HSeparator()],
-        [sg.Text(key='-CUR-TIMEOUT-', text='Current timeout: 1 Minute'), 
-            sg.Input(key='-TIMER-VALUE-', default_text=1, size=(8, 2)), 
-            sg.Radio(key='-MIN-', text='Minutes', group_id=4, enable_events=True, default=True),
-            sg.Radio(key='-SEC-', text='Seconds', group_id=4, enable_events=True)],
+        [sg.Text(key='-CUR-TIMEOUT-', text='Current timeout: 1 Minute')],
+        [sg.Input(key='-TIMER-VALUE-', default_text=1, size=(8, 2)), 
+            Radio('-MIN-', 'Minutes', 4, default=True),
+            Radio('-SEC-', 'Seconds', 4)],
         [Button('-DEC-TIMER-', '-', color=('white', '#00F')), 
             Button('-INC-TIMER-', '+', color=('white', '#FFA500'))]]
         # [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
@@ -165,9 +166,12 @@ def main():
     layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
     layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
     layout_custm = [[sg.Column(custm_mode, key="-LAYOUT_CUSTM-", visible=False)]]
-    layout = [[folder_browser], [sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=files + session +
-        layout_const + layout_class + layout_custm + timer_layout), 
+    layout = [[sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=folder_browser + files 
+        + session + layout_const + layout_class + layout_custm + timer_layout), 
         sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
+    # layout = [[folder_browser], [sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=files + session +
+    #     layout_const + layout_class + layout_custm + timer_layout), 
+    #     sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
 
     # loop reading the user input and displaying image, filename
     img = 0
@@ -179,7 +183,7 @@ def main():
     while True:
         # print(sg.Window.get_screen_size())
         # print(paused)
-        event, values = window.read(timeout=15)
+        event, values = window.read(timeout=100)#15)
         print(f"event: {event}\nvalues: {values}\n")
 
         if event in (sg.WIN_CLOSED, '-EXIT-'):
@@ -256,6 +260,17 @@ def main():
                             print(f"event: {event}\nconst_keys: {CONST_KEYS[choice]}\nconst_values: {CONST_VALUES[choice]}\nnext_timeout: {next_timeout}")
                             break
             elif session_mode == Session_Mode.CLASS:
+                if event in CLASS_KEYS:
+                    for choice in range(len(CLASS_KEYS)):
+                        if values[CLASS_KEYS[choice]] == '-CLASS_DEFAULT-':
+                            # print(f"event: {event}\nclass_keys: {CLASS_KEYS[choice]}")
+                            class_list = CLASS_DEFAULT
+                        elif values[CLASS_KEYS[choice]] == '-CLASS_RAPID-':
+                            class_list = CLASS_RAPID
+                        elif values[CLASS_KEYS[choice]] == '-CLASS_LEISURE-':
+                            class_list = CLASS_DEFAULT
+                        
+                        print(f"event: {event}\nclass_keys: {CLASS_KEYS[choice]}\nclass_list: {class_list}")
                 pass
             elif session_mode == Session_Mode.CUSTOM:
                 if event == '-DEC-TIMER-':
