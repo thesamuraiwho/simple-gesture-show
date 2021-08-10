@@ -32,7 +32,7 @@ CONST_KEYS = ['-CONST_30SEC-', '-CONST_1MIN-', '-CONST_2MIN-', '-CONST_5MIN-',
     '-CONST_10MIN-', '-CONST_15MIN-', '-CONST_30MIN-', '-CONST_60MIN-']
 CONST_VALUES = [int(0.5 * MIN), MIN, 2 * MIN, 5 * MIN, 10 * MIN, 15 * MIN, 30 * MIN, 60 * MIN]
 
-CLASS_KEYS = ['-CLASS_DEFAULT-', '-CLASS_RAPID-', '-CLASS_LEISURE']
+CLASS_KEYS = ['-CLASS_DEFAULT-', '-CLASS_RAPID-', '-CLASS_LEISURE-']
 CLASS_DEFAULT = [[10, int(0.5 * MIN)], [5, MIN], [2, 5 * MIN], [1, 10 * MIN]]
 CLASS_RAPID = [[4, int(0.25 * MIN)], [4, int(0.5 * MIN)], [2, MIN], [2, 5 * MIN]]
 CLASS_LEISURE = [[10, MIN], [4, 5 * MIN], [2, 15 * MIN], [1, 30 * MIN]]
@@ -108,8 +108,13 @@ def main():
     file_num_display_elem = sg.Text(key='-FILE_NUM-', text='', size=(15,1))
     image_elem = sg.Image(key='-IMAGE_ELEM-', data=None)
     col = [[image_elem]]
+    img = 0
     num_files = 0
+    
+    # class mode variables
     class_list = CLASS_DEFAULT
+    class_mode_index = 0
+    class_selection = [0, class_list[0][1]]
     
     folder_browser = [[sg.FolderBrowse(button_text="Browse",
         initial_folder=os.getcwd(),
@@ -120,8 +125,6 @@ def main():
     files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(40, 10))],
         [Button('-PREV-', 'Prev', color="#1f6650"), Button('-NEXT-', 'Next', color="#1f6650"), 
             file_num_display_elem]]
-        # [sg.Button(key='-PREV-', button_text='Prev', size=(8, 2)), 
-        #     sg.Button(key='-NEXT-', button_text='Next', size=(8, 2)), file_num_display_elem]]
             
 
     # Get session settings
@@ -143,7 +146,8 @@ def main():
     class_mode = [[sg.Text('Class Mode Options')], [sg.HSeparator()],
         [Radio('-CLASS_DEFAULT-', 'Default', 3, default=True), 
             Radio('-CLASS_RAPID-', 'Rapid', 3),
-            Radio('-CLASS_LEISURE', 'Leisure', 3)]]
+            Radio('-CLASS_LEISURE-', 'Leisure', 3)],
+            [sg.Text(key='-CLASS_SELECTION-', text="Selection: Default")]]
 
     custm_mode = [[sg.Text('Custom Mode Timer Adjustment')], [sg.HSeparator()],
         [sg.Text(key='-CUR-TIMEOUT-', text='Current timeout: 1 Minute')],
@@ -152,16 +156,11 @@ def main():
             Radio('-SEC-', 'Seconds', 4)],
         [Button('-DEC-TIMER-', '-', color=('white', '#00F')), 
             Button('-INC-TIMER-', '+', color=('white', '#FFA500'))]]
-        # [sg.Button(key='-DEC-TIMER-', button_text='-', button_color=('white', '#00F'), size=(8, 2)),
-        #     sg.Button(key='-INC-TIMER-', button_text='+', button_color=('white', '#FFA500'), size=(8, 2))]]
                 
-    timer_layout = [[sg.Text(key='-TIMER-', text='00:00', size=(4, 1), font=('Helvetica', 32), justification='center')],
+    timer_layout = [[sg.Text(key='-TIMER-', text='00:30', size=(4, 1), font=('Helvetica', 32), justification='center')],
         [Button('-RUN-PAUSE-', 'Run', color=('white', '#001480')),
             Button('-RESET-', 'Reset', color=('white', '#007339')),
             Button('-EXIT-', 'Exit', color=('white', '#8b1a1a'))]]
-        # [sg.Button(key='-RUN-PAUSE-', button_text='Run', button_color=('white', '#001480'), size=(8, 2)),
-        #     sg.Button(key='-RESET-', button_text='Reset', button_color=('white', '#007339'), size=(8, 2)),
-        #     sg.Exit(key='-EXIT-', button_text='Exit', button_color=('white', 'firebrick4'), size=(8, 2))]]
 
     layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
     layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
@@ -173,16 +172,11 @@ def main():
     #     layout_const + layout_class + layout_custm + timer_layout), 
     #     sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
 
-    # loop reading the user input and displaying image, filename
-    img = 0
-
     window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
                        location=(0, 0), size=(1920, 1080), background_color='#272927',
                        resizable=True, use_default_focus=False)
 
     while True:
-        # print(sg.Window.get_screen_size())
-        # print(paused)
         event, values = window.read(timeout=100)#15)
         print(f"event: {event}\nvalues: {values}\n")
 
@@ -227,7 +221,6 @@ def main():
             # define layout, show and read the form
             # col = [[filename_display_elem],
             #        [image_elem]]
-            # col = [[image_elem]]
 
             print(f"folder: {folder}\nfnames:{fnames}\nnum_files: {num_files}")
             window['-IMAGE-'].update(visible=True)
@@ -237,7 +230,6 @@ def main():
 
         elif folder:
             print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
-
             if event in MODES_KEYS:
                 for choice in range(len(MODES_KEYS)):
                     if values[MODES_KEYS[choice]]:
@@ -257,21 +249,101 @@ def main():
                             current_time = start_time = time_as_int()
                             end_time = current_time + next_timeout
                             time_diff = next_timeout
-                            print(f"event: {event}\nconst_keys: {CONST_KEYS[choice]}\nconst_values: {CONST_VALUES[choice]}\nnext_timeout: {next_timeout}")
+                            print(f"event: {event}\nconst_keys: {CONST_KEYS[choice]}\nconst_values: {CONST_VALUES[choice]}"
+                                f"\nnext_timeout: {next_timeout}")
                             break
+                elif event == '-RESET-':
+                    current_time = start_time = time_as_int()
+                    end_time = current_time + next_timeout
+                    time_diff = next_timeout
+                elif event == '-RUN-PAUSE-':
+                    paused = not paused
+                    if paused:
+                        time_diff = end_time - current_time
+                    else:
+                        current_time = start_time = time_as_int()
+                        end_time = current_time + time_diff
+                    window['-RUN-PAUSE-'].update('Run' if paused else 'Pause')
+                elif event in ('-NEXT-', '-PREV-'):
+                    if event == '-NEXT-':
+                        img += 1
+                        if img >= num_files:
+                            img -= num_files
+                    elif event == '-PREV-':
+                        img -= 1
+                        if img < 0:
+                            img += num_files
+                    filename = os.path.join(folder, fnames[img])
+                    current_time = start_time = time_as_int()
+                    end_time = current_time + next_timeout
+                    time_diff = next_timeout
+                elif event == '-LISTBOX-':            
+                    f = values['-LISTBOX-'][0]        
+                    filename = os.path.join(folder, f)
+                    img = fnames.index(f)             
+                    current_time = start_time = time_as_int()
+                    end_time = current_time + next_timeout
+                    time_diff = next_timeout
+                else:
+                    filename = os.path.join(folder, fnames[img])
+                
+                if time_diff <= 0 and not paused:
+                    print("\nRESET\n")
+                    current_time = start_time = time_as_int()
+                    end_time = current_time + next_timeout
+                    time_diff = next_timeout
+                    img += 1
+                    if img >= num_files:
+                        img %= num_files
+                    filename = os.path.join(folder, fnames[img])
+                elif time_diff > 0 and not paused:
+                    print("\nTIMER RUNNING\n")
+                    current_time = time_as_int()
+                    time_diff = end_time - current_time
+
+                print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
+                        
             elif session_mode == Session_Mode.CLASS:
                 if event in CLASS_KEYS:
                     for choice in range(len(CLASS_KEYS)):
-                        if values[CLASS_KEYS[choice]] == '-CLASS_DEFAULT-':
-                            # print(f"event: {event}\nclass_keys: {CLASS_KEYS[choice]}")
+                        if values[CLASS_KEYS[choice]] and CLASS_KEYS[choice] == '-CLASS_DEFAULT-' :
                             class_list = CLASS_DEFAULT
-                        elif values[CLASS_KEYS[choice]] == '-CLASS_RAPID-':
+                            window['-CLASS_SELECTION-'].update('Selection: Default')
+                        elif values[CLASS_KEYS[choice]] and CLASS_KEYS[choice] == '-CLASS_RAPID-':
                             class_list = CLASS_RAPID
-                        elif values[CLASS_KEYS[choice]] == '-CLASS_LEISURE-':
-                            class_list = CLASS_DEFAULT
-                        
-                        print(f"event: {event}\nclass_keys: {CLASS_KEYS[choice]}\nclass_list: {class_list}")
-                pass
+                            window['-CLASS_SELECTION-'].update('Selection: Rapid')
+                        elif values[CLASS_KEYS[choice]] and CLASS_KEYS[choice] == '-CLASS_LEISURE-':
+                            class_list = CLASS_LEISURE
+                            window['-CLASS_SELECTION-'].update('Selection: Leisure')
+                        class_mode_index = 0
+                        class_selection = [0, class_list[0][1]]
+
+                # if class selection gets to the next timeout
+                if class_selection[0] == class_list[class_mode_index][0]:
+                    class_mode_index += 1
+                    class_selection = [0, class_list[class_mode_index][1]]
+                elif class_mode_index > len(class_list): # if the class mode cycle completes, reset
+                    class_mode_index = 0
+                    class_selection = [0, class_list[0][1]]
+                else:
+                    class_selection[0] += 1
+
+                if time_diff <= 0 and not paused:
+                    print("\nRESET\n")
+                    current_time = start_time = time_as_int()
+                    end_time = current_time + next_timeout
+                    time_diff = next_timeout
+                    img += 1
+                    if img >= num_files:
+                        img %= num_files
+                    filename = os.path.join(folder, fnames[img])
+                elif time_diff > 0 and not paused:
+                    print("\nTIMER RUNNING\n")
+                    current_time = time_as_int()
+                    time_diff = end_time - current_time
+
+                print(f"event: {event}\nclass_keys: {CLASS_KEYS[choice]}\nclass_list: {class_list}")
+
             elif session_mode == Session_Mode.CUSTOM:
                 if event == '-DEC-TIMER-':
                     if next_timeout > 6000:
@@ -297,65 +369,65 @@ def main():
                         print(new_text)
                         window['-CUR-TIMEOUT-'].update(value=new_text)
 
-            if event == '-RESET-':
-                current_time = start_time = time_as_int()
-                end_time = current_time + next_timeout
-                time_diff = next_timeout
-                print("pressed reset button")
-            elif event == '-RUN-PAUSE-':
-                print("pressed run-pause button")
-                paused = not paused
-                print(f"paused: {paused}")
-                if paused:
-                    time_diff = end_time - current_time
-                else:
-                    start_time = time_as_int() 
-                    current_time = start_time
-                    end_time = start_time + time_diff
-                    print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
-                # Change button's text
-                window['-RUN-PAUSE-'].update('Run' if paused else 'Pause')
+            # if event == '-RESET-':
+            #     current_time = start_time = time_as_int()
+            #     end_time = current_time + next_timeout
+            #     time_diff = next_timeout
+            #     print("pressed reset button")
+            # elif event == '-RUN-PAUSE-':
+            #     print("pressed run-pause button")
+            #     paused = not paused
+            #     print(f"paused: {paused}")
+            #     if paused:
+            #         time_diff = end_time - current_time
+            #     else:
+            #         start_time = time_as_int() 
+            #         current_time = start_time
+            #         end_time = start_time + time_diff
+            #         print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
+            #     # Change button's text
+            #     window['-RUN-PAUSE-'].update('Run' if paused else 'Pause')
 
-            if event == '-NEXT-': #in ('-NEXT-', 'Down:40', 'Next:34'):
-                img += 1
-                if img >= num_files:
-                    img -= num_files
-                filename = os.path.join(folder, fnames[img])
-                current_time = start_time = time_as_int()
-                end_time = current_time + next_timeout
-                time_diff = next_timeout
-            elif event == '-PREV-': #in ('-PREV-', 'Up:38', 'Prior:33'):
-                img -= 1
-                if img < 0:
-                    img += num_files
-                filename = os.path.join(folder, fnames[img])
-                current_time = start_time = time_as_int()
-                end_time = current_time + next_timeout
-                time_diff = next_timeout
-            elif event == '-LISTBOX-':              # something from the listbox
-                f = values['-LISTBOX-'][0]          # selected filename
-                filename = os.path.join(folder, f)  # read this file
-                img = fnames.index(f)               # update running index
-                current_time = start_time = time_as_int()
-                end_time = current_time + next_timeout
-                time_diff = next_timeout
-            else:
-                filename = os.path.join(folder, fnames[img])
+            # if event == '-NEXT-': #in ('-NEXT-', 'Down:40', 'Next:34'):
+            #     img += 1
+            #     if img >= num_files:
+            #         img -= num_files
+            #     filename = os.path.join(folder, fnames[img])
+            #     current_time = start_time = time_as_int()
+            #     end_time = current_time + next_timeout
+            #     time_diff = next_timeout
+            # elif event == '-PREV-': #in ('-PREV-', 'Up:38', 'Prior:33'):
+            #     img -= 1
+            #     if img < 0:
+            #         img += num_files
+            #     filename = os.path.join(folder, fnames[img])
+            #     current_time = start_time = time_as_int()
+            #     end_time = current_time + next_timeout
+            #     time_diff = next_timeout
+            # elif event == '-LISTBOX-':              # something from the listbox
+            #     f = values['-LISTBOX-'][0]          # selected filename
+            #     filename = os.path.join(folder, f)  # read this file
+            #     img = fnames.index(f)               # update running index
+            #     current_time = start_time = time_as_int()
+            #     end_time = current_time + next_timeout
+            #     time_diff = next_timeout
+            # else:
+            #     filename = os.path.join(folder, fnames[img])
             
-            print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
-            if time_diff <= 0 and not paused:
-                print("\nRESET\n")
-                current_time = start_time = time_as_int()
-                end_time = current_time + next_timeout
-                time_diff = next_timeout
-                img += 1
-                if img >= num_files:
-                    img %= num_files
-                filename = os.path.join(folder, fnames[img])
-            elif time_diff > 0 and not paused:
-                print("\nTIMER RUNNING\n")
-                current_time = time_as_int()
-                time_diff = end_time - current_time
+            # print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
+            # if time_diff <= 0 and not paused:
+            #     print("\nRESET\n")
+            #     current_time = start_time = time_as_int()
+            #     end_time = current_time + next_timeout
+            #     time_diff = next_timeout
+            #     img += 1
+            #     if img >= num_files:
+            #         img %= num_files
+            #     filename = os.path.join(folder, fnames[img])
+            # elif time_diff > 0 and not paused:
+            #     print("\nTIMER RUNNING\n")
+            #     current_time = time_as_int()
+            #     time_diff = end_time - current_time
             print(f'start_time:{start_time}\ncurrent_time: {current_time}\nend_time: {end_time}\ntime_diff: {time_diff}\n')
 
             # --------- Display timer in window --------
