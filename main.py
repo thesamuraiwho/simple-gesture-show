@@ -44,6 +44,82 @@ class Session_Mode(Enum):
     CONSTANT = 0
     CLASS = 1
 
+class Clock():
+    def __init__(self):
+        self.next_timeout = 3000 #1000 # 100 = 1 seconds
+        self.current_time = 0
+        self.time_diff = self.next_timeout
+        self.paused = True
+        self.end_time = 0
+
+    def update_clock(self, new_timeout):
+        self.next_timeout = new_timeout
+        self.current_time = time_as_int()
+        self.end_time = self.current_time + self.next_timeout
+        self.time_diff = self.next_timeout
+    
+    def reset_clock(self):
+        self.current_time = time_as_int()
+        self.end_time = self.current_time + self.next_timeout
+        self.time_diff = self.next_timeout
+
+    def update_paused(self):
+        self.paused = not self.paused
+    
+    def decrement(self):
+        self.current_time = time_as_int()
+        self.time_diff = self.end_time - self.current_time
+
+class Class_Mode():
+
+    # def __init__(self):
+    #     self.class_list = CLASS_DEFAULT
+    #     self.class_mode_str = 'Default'
+    #     self.class_index = 0
+    #     self.class_poses = [0, class_list[0][1]]
+
+    def __init__(self, class_list=CLASS_DEFAULT, class_mode_str='Default', 
+        class_index=0, class_poses=[0, CLASS_DEFAULT[0][1]]):
+        self.class_list = class_list
+        self.class_mode_str = class_mode_str
+        self.class_index = class_index
+        self.class_poses = class_poses
+    
+    def set_class_mode(self, class_list, class_mode_str, class_index, class_poses):
+        self.class_list = class_list
+        self.class_mode_str = class_mode_str
+        self.class_index = class_index
+        self.class_poses = class_poses
+    
+    def set_choice(self, class_list, class_mode_str):
+        self.class_list = class_list
+        self.class_mode_str = class_mode_str
+        self.class_index = 0
+        self.class_poses = [0, class_list[0][1]]
+
+    def get_poses(self):
+        return self.class_list[self.class_index][0]
+    
+    def get_pose(self):
+        return self.class_poses[0]
+    
+    def get_timeout(self):
+        return self.class_list[self.class_index][1]
+
+    def increment(self):
+        # If we complete a class mode session, reset to the beginning
+        if self.class_index >= len(self.class_list):
+            self.class_index = 0
+            self.class_poses = [0, class_list[0][1]]
+        
+        # If we complete all the poses but not the class mode session, increment the class index
+        # and reset the class poses counter and set the timeout to the new class index
+        elif self.class_index < len(self.class_list) and self.class_poses[0] == self.class_list[self.class_index][0]:
+            self.class_index += 1
+            self.class_poses = [0, self.class_list[self.class_index][1]]
+        else:
+            self.class_poses[0] += 1
+
 def Radio(key, text, group_id, default=False): return sg.Radio(key=key, text=text, group_id=group_id, 
     default=default, enable_events=True)
 
@@ -101,43 +177,29 @@ def check_const_choice(values):
     for choice in range(len(CONST_KEYS)):
         if values[CONST_KEYS[choice]]:
             next_timeout = CONST_VALUES[choice]
-            current_time = start_time = time_as_int()
+            current_time = time_as_int()
             end_time = current_time + next_timeout
             time_diff = next_timeout
             break
     return next_timeout, current_time, end_time, time_diff
 
-def check_class_choice(event, values, window):
-    class_list = CLASS_DEFAULT
-    class_mode_str = 'Default'
+def check_class_choice(event, values, window, class_settings, clock):
     if values[event] and event == '-CLASS_DEFAULT-' :
-        class_list = CLASS_DEFAULT
-        class_mode_str = 'Default'
+        class_settings.set_choice(CLASS_DEFAULT, 'Default')
     elif values[event] and event == '-CLASS_RAPID-':
-        class_list = CLASS_RAPID
-        class_mode_str = 'Rapid'
+        class_settings.set_choice(CLASS_RAPID, 'Rapid')
     elif values[event] and event == '-CLASS_LEISURE-':
-        class_list = CLASS_LEISURE
-        class_mode_str = 'Leisure'
-    class_index = 0
-    class_poses = [0, class_list[0][1]]
-    next_timeout = class_poses[1]
-    current_time = start_time = time_as_int()
-    end_time = current_time + next_timeout
-    time_diff = next_timeout
-    window['-CLASS_SELECTION-'].update(f'Selection: {class_mode_str}'
-        f'\nClass index: {class_index}\nPoses: {class_list[class_index][0]}'
-        f'\nCurrent pose: {class_poses[0]}\nTime: {time_as_string(class_list[class_index][1])}')
+        class_settings.set_choice(CLASS_LEISURE, 'Leisure')
+    clock.update_clock(class_settings.class_poses[1])
+    window['-CLASS_SELECTION-'].update(f'Selection: {class_settings.class_mode_str}'
+        f'\nClass index: {class_settings.class_index}\nPoses: {class_settings.get_poses()}'
+        f'\nCurrent pose: {class_settings.get_pose()}\nTime: {time_as_string(class_settings.get_timeout())}')
     
-    return class_list, class_mode_str, class_index, class_poses, next_timeout, current_time, end_time, time_diff
+    return class_settings, clock
 
 def main():
     sg.theme('lightgreen6')
     session_mode = Session_Mode.CONSTANT
-    next_timeout = 3000 #1000 # 100 = 1 seconds
-    current_time, time_diff, paused = 0, next_timeout, True
-    start_time = time_as_int()
-    end_time = 0
     folder = ""
     fnames = []
     file_num_display_elem = sg.Text(key='-FILE_NUM-', text='', size=(15,1))
@@ -145,12 +207,8 @@ def main():
     col = [[image_elem]]
     img = 0
     num_files = 0
-    
-    # class mode variables
-    class_list = CLASS_DEFAULT
-    class_mode_str = 'Default'
-    class_index = 0
-    class_poses = [0, class_list[0][1]]
+    clock = Clock()
+    class_settings = Class_Mode()
     
     folder_browser = [[sg.FolderBrowse(button_text="Browse", initial_folder=os.getcwd(),
         enable_events=True, font=('Helvetica', 16), key="-FOLDER_BROWSER-")]]
@@ -174,9 +232,9 @@ def main():
         [Radio('-CLASS_DEFAULT-', 'Default', 3, default=True), 
             Radio('-CLASS_RAPID-', 'Rapid', 3),
             Radio('-CLASS_LEISURE-', 'Leisure', 3)],
-            [sg.Text(key='-CLASS_SELECTION-', text= f'Selection: {class_mode_str}\nClass index: {class_index}' 
-                + f'\nPoses: {class_list[class_index][0]}\nCurrent pose: {class_poses[0]}'
-                + f'\nTime: {time_as_string(class_list[class_index][1])}')]]
+            [sg.Text(key='-CLASS_SELECTION-', text= f'Selection: {class_settings.class_mode_str}\nClass index: {class_settings.class_index}' 
+                + f'\nPoses: {class_settings.get_poses()}\nCurrent pose: {class_settings.get_pose()}'
+                + f'\nTime: {time_as_string(class_settings.get_timeout())}')]]
                 
     timer_layout = [[sg.Text(key='-TIMER-', text='00:30', size=(4, 1), font=('Helvetica', 32), justification='center')],
         [Button('-RUN_PAUSE-', 'Run', color=('white', '#001480'), disabled=True),
@@ -194,7 +252,7 @@ def main():
 
     while True:
         event, values = window.read(timeout=100)#10000)#100)#15)
-        print(f"event: {event}\nvalues: {values}\nsession mode: {session_mode}\ntime diff: {time_as_string(time_diff)}\n\n")
+        print(f"event: {event}\nvalues: {values}\nsession mode: {session_mode}\ntime diff: {time_as_string(clock.time_diff)}\n\n")
 
         if event in (sg.WIN_CLOSED, '-EXIT-'):
             break
@@ -230,9 +288,7 @@ def main():
             window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
         
         elif event == '-RESET-':
-            current_time = start_time = time_as_int()
-            end_time = current_time + next_timeout
-            time_diff = next_timeout
+            clock.reset_clock()
 
         elif event in ('-NEXT-', '-PREV-'):
             if event == '-NEXT-':
@@ -244,17 +300,13 @@ def main():
                 if img < 0:
                     img += num_files
             filename = os.path.join(folder, fnames[img])
-            current_time = start_time = time_as_int()
-            end_time = current_time + next_timeout
-            time_diff = next_timeout
+            clock.reset_clock()
 
         elif event == '-LISTBOX-':            
             f = values['-LISTBOX-'][0]        
             filename = os.path.join(folder, f)
             img = fnames.index(f)             
-            current_time = start_time = time_as_int()
-            end_time = current_time + next_timeout
-            time_diff = next_timeout
+            clock.reset_clock()
 
         elif event in MODES_KEYS:
             for choice in range(len(MODES_KEYS)):
@@ -269,90 +321,27 @@ def main():
 
             if session_mode == Session_Mode.CONSTANT:
                 next_timeout, current_time, end_time, time_diff = check_const_choice(values)
-                # for choice in range(len(CONST_KEYS)):
-                #     if values[CONST_KEYS[choice]]:
-                #         next_timeout = CONST_VALUES[choice]
-                #         current_time = start_time = time_as_int()
-                #         end_time = current_time + next_timeout
-                #         time_diff = next_timeout
-                #         break
-            else:
-                class_list, class_mode_str, class_index, class_poses, next_timeout, current_time, end_time, time_diff = check_class_choice(event, values, window)
-                # if values[CLASS_KEYS[choice]] and event == '-CLASS_DEFAULT-' :
-                #     class_list = CLASS_DEFAULT
-                #     class_mode_str = 'Default'
-                # elif values[CLASS_KEYS[choice]] and event == '-CLASS_RAPID-':
-                #     class_list = CLASS_RAPID
-                #     class_mode_str = 'Rapid'
-                # elif values[CLASS_KEYS[choice]] and event == '-CLASS_LEISURE-':
-                #     class_list = CLASS_LEISURE
-                #     class_mode_str = 'Leisure'
-                # class_index = 0
-                # class_poses = [0, class_list[0][1]]
-                # next_timeout = class_poses[1]
-                # current_time = start_time = time_as_int()
-                # end_time = current_time + next_timeout
-                # time_diff = next_timeout
-                # window['-CLASS_SELECTION-'].update(f'Selection: {class_mode_str}'
-                #     f'\nClass index: {class_index}\nPoses: {class_list[class_index][0]}'
-                #     f'\nCurrent pose: {class_poses[0]}\nTime: {time_as_string(class_list[class_index][1])}')
 
-        # if session_mode == Session_Mode.CONSTANT:
+            else:
+                class_settings, clock = check_class_choice(event, values, window, class_settings, clock)
+
         elif event in CONST_KEYS:
             next_timeout, current_time, end_time, time_diff = check_const_choice(values)
-            # for choice in range(len(CONST_KEYS)):
-            #     if values[CONST_KEYS[choice]]:
-            #         next_timeout = CONST_VALUES[choice]
-            #         current_time = start_time = time_as_int()
-            #         end_time = current_time + next_timeout
-            #         time_diff = next_timeout
-            #         break
-                    
-        # elif session_mode == Session_Mode.CLASS:
+
         elif event in CLASS_KEYS:
             print(f"\n\nvalues[event]: {values[event]}\n\n")
-            class_list, class_mode_str, class_index, class_poses, next_timeout, current_time, end_time, time_diff = check_class_choice(event, values, window)
-            # if values[CLASS_KEYS[event]] and event == '-CLASS_DEFAULT-' :
-            #     class_list = CLASS_DEFAULT
-            #     class_mode_str = 'Default'
-            # elif values[CLASS_KEYS[event]] and event == '-CLASS_RAPID-':
-            #     class_list = CLASS_RAPID
-            #     class_mode_str = 'Rapid'
-            # elif values[CLASS_KEYS[event]] and event == '-CLASS_LEISURE-':
-            #     class_list = CLASS_LEISURE
-            #     class_mode_str = 'Leisure'
-            # class_index = 0
-            # class_poses = [0, class_list[0][1]]
-            # next_timeout = class_poses[1]
-            # current_time = start_time = time_as_int()
-            # end_time = current_time + next_timeout
-            # time_diff = next_timeout
-            # window['-CLASS_SELECTION-'].update(f'Selection: {class_mode_str}'
-            #     f'\nClass index: {class_index}\nPoses: {class_list[class_index][0]}'
-            #     f'\nCurrent pose: {class_poses[0]}\nTime: {time_as_string(class_list[class_index][1])}')
-
-        # if paused:
-        #     if session_mode == Session_Mode.CLASS:
-        #         class_index = 0
-        #         class_poses = [0, class_list[0][1]]
-        #         next_timeout = class_poses[1]
-        #         current_time = start_time = time_as_int()
-        #         end_time = current_time + next_timeout
-        #         time_diff = next_timeout
-        #         window['-CLASS_SELECTION-'].update(f'Selection: {class_mode_str}'
-        #             f'\nClass index: {class_index}\nPoses: {class_list[class_index][0]}'
-        #             f'\nCurrent pose: {class_poses[0]}\nTime: {time_as_string(class_list[class_index][1])}')
+            class_settings, clock = check_class_choice(event, values, window, class_settings, clock)
 
         if folder:
             window['-RUN_PAUSE-'].update(disabled=False)
             if event == '-RUN_PAUSE-':
-                paused = not paused
-                if paused:
-                    time_diff = end_time - current_time
+                clock.update_paused()
+                if clock.paused:
+                    clock.time_diff = clock.end_time - clock.current_time
                 else:
-                    current_time = start_time = time_as_int()
-                    end_time = current_time + time_diff
-                window['-RUN_PAUSE-'].update('Run' if paused else 'Pause')
+                    clock.current_time = time_as_int()
+                    clock.end_time = clock.current_time + clock.time_diff
+                window['-RUN_PAUSE-'].update('Run' if clock.paused else 'Pause')
 
             # update window with new image
             image_elem.update(data=get_img_data(filename, first=True))
@@ -361,37 +350,26 @@ def main():
             file_num_display_elem.update(f'File {img+1} of {num_files}')
             window.Refresh()
 
-        if time_diff <= 0 and not paused:
+        if clock.time_diff <= 0 and not clock.paused:
             print("\nRESET\n")
             if session_mode == Session_Mode.CLASS:
                 print("\n\nClass mode reset\n\n")
-                # TODO fix logic here
-                # if class selection gets to the next timeout
-                if class_poses[0] == class_list[class_index][0] and class_index <= len(class_list):
-                    class_index += 1
-                    class_poses = [0, class_list[class_index][1]]
-                elif class_index > len(class_list): # if the class mode cycle completes, reset
-                    class_index = 0
-                    class_poses = [0, class_list[0][1]]
-                else:
-                    class_poses[0] += 1
-                window['-CLASS_SELECTION-'].update(f'Selection: {class_mode_str}'
-                    f'\nClass index: {class_index}\nPoses: {class_list[class_index][0]}'
-                    f'\nCurrent pose: {class_poses[0]}\nTime: {time_as_string(class_list[class_index][1])}')
-            current_time = start_time = time_as_int()
-            end_time = current_time + next_timeout
-            time_diff = next_timeout
+                class_settings.increment()
+                clock.next_timeout = class_settings.class_poses[1]
+                window['-CLASS_SELECTION-'].update(f'Selection: {class_settings.class_mode_str}'
+                    f'\nClass index: {class_settings.class_index}\nPoses: {class_settings.get_poses()}'
+                    f'\nCurrent pose: {class_settings.get_pose()}\nTime: {time_as_string(class_settings.get_timeout())}')
+            clock.reset_clock()
             img += 1
             if img >= num_files:
                 img %= num_files
             filename = os.path.join(folder, fnames[img])
 
-        elif time_diff > 0 and not paused:
+        elif clock.time_diff > 0 and not clock.paused:
             print("\nTIMER RUNNING\n")
-            current_time = time_as_int()
-            time_diff = end_time - current_time
+            clock.decrement()
 
-        window['-TIMER-'].update(time_as_string(time_diff))
+        window['-TIMER-'].update(time_as_string(clock.time_diff))
     window.close()
 
 if __name__ == "__main__":
