@@ -71,13 +71,6 @@ class Clock():
         self.time_diff = self.end_time - self.current_time
 
 class Class_Mode():
-
-    # def __init__(self):
-    #     self.class_list = CLASS_DEFAULT
-    #     self.class_mode_str = 'Default'
-    #     self.class_index = 0
-    #     self.class_poses = [0, class_list[0][1]]
-
     def __init__(self, class_list=CLASS_DEFAULT, class_mode_str='Default', 
         class_index=0, class_poses=[0, CLASS_DEFAULT[0][1]]):
         self.class_list = class_list
