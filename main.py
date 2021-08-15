@@ -328,8 +328,6 @@ def main():
                     for lay in MODES_VALUES:
                         window[lay].update(visible=False)
                     window[new_layout].update(visible=True)
-                    clock.pause()
-                    window['-RUN_PAUSE-'].update('▶️' if clock.paused else '⏸️')
                     break
 
             if session_mode == Session_Mode.CONSTANT:
