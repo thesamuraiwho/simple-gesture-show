@@ -7,7 +7,7 @@
 
 import PySimpleGUI as sg
 import os
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps
 import io
 import random
 import time
@@ -156,7 +156,7 @@ def time_as_string(time):
         time = 0
     return '{:02d}:{:02d}'.format(((time) // 100) // 60, ((time) // 100) % 60)
 
-def get_img_data(f, maxsize=(1200, 850), first=False):
+def get_img_data(f, maxsize=(1600, 950), first=False):#(1200, 850), first=False):
     """Generate image data using PIL
     """
 
@@ -197,6 +197,11 @@ def get_img_data(f, maxsize=(1200, 850), first=False):
         return bio.getvalue()
     return ImageTk.PhotoImage(img)
 
+def grayscale(f):
+    bw_img = ImageOps.grayscale(f)
+    bw_img.show()
+    return bw_img
+
 def check_const_choice(values, clock):
     for choice in range(len(CONST_KEYS)):
         if values[CONST_KEYS[choice]]:
@@ -220,6 +225,7 @@ def main():
     class_settings = Class_Mode()
     session_mode = Session_Mode.CONSTANT
     folder = ""
+    filename = ""
     fnames = []
     img = 0
     num_files = 0
@@ -231,7 +237,7 @@ def main():
         enable_events=True, font=('Helvetica', 16), key="-FOLDER_BROWSER-")]]
 
     files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(40, 10))],
-        [Button('-PREV-', '⏪'), Button('-NEXT-', '⏩'),
+        [Button('-PREV-', '⏪', disabled=True), Button('-NEXT-', '⏩', disabled=True),
             file_num_display_elem]]
 
     session = [[sg.Text('Session Type')], [sg.HSeparator()],
@@ -250,54 +256,81 @@ def main():
             Radio('-CLASS_LEISURE-', 'Leisure', 3)],
             [sg.Text(key='-CLASS_SELECTION-', text=class_settings.display())]]
                 
-    timer_layout = [[sg.Text(key='-TIMER-', text='00:30', size=(4, 1), font=('Helvetica', 32), justification='center')],
+    timer_layout = [[sg.Text(key='-TIMER-', text='00:30', size=(4, 1), 
+            font=('Helvetica', 32), justification='center')],
         [Button('-RUN_PAUSE-', '▶️', color=('white', '#001480'), disabled=True),
             Button('-RESET-', '🔄', color=('white', '#007339')),
             Button('-EXIT-', 'Exit', color=('white', '#8b1a1a'))]]
 
     layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
     layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
-    layout = [[sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=folder_browser + files 
-        + session + layout_const + layout_class + timer_layout), 
+    layout = [[sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=folder_browser 
+        + files + session + layout_const + layout_class + timer_layout), 
         sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
     window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
                        location=(0, 0), size=(1920, 1080), background_color='#272927',
-                       resizable=True, use_default_focus=False)
+                       resizable=True, use_default_focus=False).Finalize()
+    window.Maximize()
 
     while True:
-        event, values = window.read(timeout=15)#10000)#100)#15)
-        print(f"event: {event}\nvalues: {values}\nsession mode: {session_mode}\ntime diff: {time_as_string(clock.time_diff)}\n\n")
+        event, values = window.read(timeout=10)#10000)#100)#15)
+        # print(f"event: {event}\nvalues: {values}\nsession mode: {session_mode}\ntime diff: {time_as_string(clock.time_diff)}\n\n")
 
         if event in (sg.WIN_CLOSED, '-EXIT-'):
             break
 
         elif event == '-FOLDER_BROWSER-':
             folder = values['-FOLDER_BROWSER-'] # Get the folder containing the images from the user
-            if not folder:
-                # TODO Should gracefully allow re-browsing
-                sg.popup_cancel('Cancelling')
-                raise SystemExit()
-
             img_types = (".png", ".jpg", ".jpeg", ".tiff", ".bmp") # PIL supported image types
-            flist0 = os.listdir(folder) # get list of files in folder
 
-            # create sub list of image files (no sub folders, no wrong file types)
-            fnames = [f for f in flist0 if os.path.isfile(
-                os.path.join(folder, f)) and f.lower().endswith(img_types)]
+            if folder:
+                flist0 = os.listdir(folder) # get list of files in folder
 
-            random.shuffle(fnames) # Randomly shuffle the order of files
-            num_files = len(fnames)  # number of images found
-            if num_files == 0:
-                # TODO Should gracefully allow re-browsing
-                sg.popup('No files in folder')
-                raise SystemExit()
+                # create sub list of image files (no sub folders, no wrong file types)
+                fnames = [f for f in flist0 if os.path.isfile(
+                    os.path.join(folder, f)) and f.lower().endswith(img_types)]
 
-            del flist0  # file list object deleted since it is no longer needed
-            filename = os.path.join(folder, fnames[0])  # initialize to the first file in the list
-            window['-IMAGE-'].update(visible=True)
-            window['-LISTBOX-'].update(values=fnames)
-            window['-FILE_NUM-'].update(f'File 1 of {num_files}')
-            window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
+                random.shuffle(fnames) # Randomly shuffle the order of files
+                num_files = len(fnames)  # number of images found
+                if num_files != 0:
+                    del flist0  # file list object deleted since it is no longer needed
+                    filename = os.path.join(folder, fnames[0])  # initialize to the first file in the list
+                    window['-IMAGE-'].update(visible=True)
+                    window['-LISTBOX-'].update(values=fnames)
+                    window['-FILE_NUM-'].update(f'File 1 of {num_files}')
+                    window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
+                else:
+                    sg.popup('No images in folder')
+                #     raise SystemExit()
+            else:
+                sg.popup('Cancelling')
+            #     raise SystemExit()
+
+
+            # if not folder:
+            #     # TODO Should gracefully allow re-browsing
+            #     sg.popup_cancel('Cancelling')
+            #     raise SystemExit()
+
+            # flist0 = os.listdir(folder) # get list of files in folder
+
+            # # create sub list of image files (no sub folders, no wrong file types)
+            # fnames = [f for f in flist0 if os.path.isfile(
+            #     os.path.join(folder, f)) and f.lower().endswith(img_types)]
+
+            # random.shuffle(fnames) # Randomly shuffle the order of files
+            # num_files = len(fnames)  # number of images found
+            # if num_files == 0:
+            #     # TODO Should gracefully allow re-browsing
+            #     sg.popup('No files in folder')
+            #     raise SystemExit()
+
+            # del flist0  # file list object deleted since it is no longer needed
+            # filename = os.path.join(folder, fnames[0])  # initialize to the first file in the list
+            # window['-IMAGE-'].update(visible=True)
+            # window['-LISTBOX-'].update(values=fnames)
+            # window['-FILE_NUM-'].update(f'File 1 of {num_files}')
+            # window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
         
         elif event == '-RESET-':
             clock.reset_clock()
@@ -343,7 +376,9 @@ def main():
             class_settings, clock = check_class_choice(event, values, class_settings, clock)
             window['-CLASS_SELECTION-'].update(class_settings.display())
 
-        if folder:
+        if folder and filename:
+            window['-PREV-'].update(disabled=False)
+            window['-NEXT-'].update(disabled=False)
             window['-RUN_PAUSE-'].update(disabled=False)
             if event == '-RUN_PAUSE-':
                 clock.pause()
@@ -357,7 +392,7 @@ def main():
             window.Refresh()
 
         if clock.time_diff <= 0 and not clock.paused:
-            print("\nRESET\n")
+            # print("\nRESET\n")
             if session_mode == Session_Mode.CLASS:
                 class_settings.increment()
                 clock.next_timeout = class_settings.class_poses[1]
@@ -369,7 +404,7 @@ def main():
             filename = os.path.join(folder, fnames[img])
 
         elif clock.time_diff > 0 and not clock.paused:
-            print("\nTIMER RUNNING\n")
+            # print("\nTIMER RUNNING\n")
             clock.decrement()
 
         window['-TIMER-'].update(time_as_string(clock.time_diff))
