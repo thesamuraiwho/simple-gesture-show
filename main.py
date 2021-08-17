@@ -25,6 +25,7 @@ from enum import Enum
 # Constants
 SEC = 100 # 1000ms == 1 sec
 MIN = 6000 # 60000ms == 1 min
+IMG_TYPES = (".png", ".jpg", ".jpeg", ".tiff", ".bmp") # PIL supported image types
 MODES_KEYS = ["-SESSION_CONST_MODE-", "-SESSION_CLASS_MODE-"]
 MODES_VALUES = ["-LAYOUT_CONST-", "-LAYOUT_CLASS-"]
 
@@ -36,24 +37,9 @@ CLASS_KEYS = ['-CLASS_DEFAULT-', '-CLASS_RAPID-', '-CLASS_LEISURE-']
 test_class = [[[1, 2 * SEC], [2, 3 * SEC], [3, 4 * SEC]],
     [[4, 5 * SEC], [5, 7 * SEC], [6, 10 * SEC]], 
     [[3, 3 * SEC], [4, 4 * SEC], [5, 5 * SEC]]]
-CLASS_DEFAULT = test_class[0]#[[10, int(0.5 * MIN)], [5, MIN], [2, 5 * MIN], [1, 10 * MIN]]
-CLASS_RAPID = test_class[1]#[[4, int(0.25 * MIN)], [4, int(0.5 * MIN)], [2, MIN], [2, 5 * MIN]]
-CLASS_LEISURE = test_class[2]#[[10, MIN], [4, 5 * MIN], [2, 15 * MIN], [1, 30 * MIN]]
-
-# image_pause = './ButtonGraphics/Pause.png'
-# image_reset = './ButtonGraphics/Restart.png'
-# image_prev = './ButtonGraphics/Next.png'
-# image_next = './ButtonGraphics/Next.png'
-# image_exit = './ButtonGraphics/Exit.png'
-
-# [sg.Button(image_filename=image_restart, image_size=(50, 50), image_subsample=2,  key='-RESTART SONG-'),
-# sg.Text(' ' * 2),
-# sg.Button(image_filename=image_pause, image_size=(50, 50), image_subsample=2,  key='-PAUSE-'),
-# sg.Text(' ' * 2),
-# sg.Button(image_filename=image_next, image_size=(50, 50), image_subsample=2,  key='-NEXT-'),
-# sg.Text(' ' * 2),
-# sg.Text(' ' * 2), sg.Button(image_filename=image_exit, image_size=(50, 50), image_subsample=2, key='Exit')]
-
+CLASS_DEFAULT = [[10, int(0.5 * MIN)], [5, MIN], [2, 5 * MIN], [1, 10 * MIN]]
+CLASS_RAPID = [[4, int(0.25 * MIN)], [4, int(0.5 * MIN)], [2, MIN], [2, 5 * MIN]]
+CLASS_LEISURE = [[10, MIN], [4, 5 * MIN], [2, 15 * MIN], [1, 30 * MIN]]
 
 class Session_Mode(Enum):
     CONSTANT = 0
@@ -97,7 +83,6 @@ class Class_Mode():
         self.class_mode_str = class_mode_str
         self.class_index = class_index
         self.class_poses = class_poses
-        self.class_event = 'Nothing'
     
     def set_class_mode(self, class_list, class_mode_str, class_index, class_poses):
         self.class_list = class_list
@@ -123,30 +108,34 @@ class Class_Mode():
     def increment(self):
         # If we complete a class mode session, reset to the beginning
         if self.class_index == len(self.class_list) - 1 and self.class_poses[0] == self.class_list[self.class_index][0] - 1:
-            self.class_event = 'Reset session'
             self.class_index = 0
             self.class_poses = [0, self.class_list[0][1]]
         # If we complete all the poses but not the class mode session, increment the class index
         # and reset the class poses counter and set the timeout to the new class index
         elif self.class_index < len(self.class_list) - 1 and self.class_poses[0] == self.class_list[self.class_index][0] - 1:
-            self.class_event = 'Next poses'
             self.class_index += 1
             self.class_poses = [0, self.class_list[self.class_index][1]]
         else:
-            self.class_event = 'Inc pose count'
             self.class_poses[0] += 1
 
     def display(self):
-        return f'Selection: {self.class_mode_str}\nClass index: {self.class_index}\n' \
-            + f'Poses: {self.get_poses()}\nCurrent pose: {self.get_pose() + 1}\n' \
+        return f'Selection: {self.class_mode_str}\nClass index: {self.class_index + 1} ' \
+            + f'Poses: {self.get_poses()} Current pose: {self.get_pose() + 1}\n' \
             + f'Time: {time_as_string(self.get_timeout())}\n' \
-            + f'Event: {self.class_event}'
+            + self.display_class_list()
 
-def Radio(key, text, group_id, default=False): return sg.Radio(key=key, text=text, group_id=group_id, 
-    default=default, enable_events=True)
+    def display_class_list(self):
+        cl ="\nMode Poses\n"
+        for i in range(len(self.class_list)):
+	        cl += f"Poses: {self.class_list[i][0]} Timeout: {time_as_string(self.class_list[i][1])}\n"
+        
+        return cl
 
-def Button(key, text, color="#1f6650", font=('Helvetica', 12), disabled=False): return sg.Button(key=key, button_text=text, 
-    button_color=color, size=(8, 2), font=font, disabled=disabled)
+def Radio(key, text, group_id, default=False): 
+    return sg.Radio(key=key, text=text, group_id=group_id, default=default, enable_events=True)
+
+def Button(key, text, color="#1f6650", font=('Helvetica', 12), disabled=False): 
+    return sg.Button(key=key, button_text=text, button_color=color, size=(8, 2), font=font, disabled=disabled)
 
 def time_as_int():
     return int(round(time.time() * 100))
@@ -189,7 +178,6 @@ def get_img_data(f, maxsize=(1600, 950), first=False):#(1200, 850), first=False)
             scale_factor = min(scale_factor_width, scale_factor_height)
             img.thumbnail((img_width * scale_factor, img_height* scale_factor))
 
-    # img.thumbnail(maxsize)
     if first:                     # tkinter is inactive the first time
         bio = io.BytesIO()
         img.save(bio, format="PNG")
@@ -221,6 +209,7 @@ def check_class_choice(event, values, class_settings, clock):
 
 def main():
     sg.theme('lightgreen6')
+    settings = sg.UserSettings()
     clock = Clock()
     class_settings = Class_Mode()
     session_mode = Session_Mode.CONSTANT
@@ -232,8 +221,11 @@ def main():
     file_num_display_elem = sg.Text(key='-FILE_NUM-', text='', size=(15,1))
     image_elem = sg.Image(key='-IMAGE_ELEM-', data=None)
     col = [[image_elem]]
+
+    settings_load = False
     
-    folder_browser = [[sg.FolderBrowse(button_text="Browse", initial_folder=os.getcwd(),
+    folder_browser = [[sg.FolderBrowse(button_text="Browse", 
+        initial_folder=settings['-FOLDER-'] if settings['-FOLDER-'] else os.getcwd(),
         enable_events=True, font=('Helvetica', 16), key="-FOLDER_BROWSER-")]]
 
     files = [[sg.Listbox(key='-LISTBOX-', values=fnames, change_submits=True, size=(40, 10))],
@@ -255,17 +247,18 @@ def main():
             Radio('-CLASS_RAPID-', 'Rapid', 3),
             Radio('-CLASS_LEISURE-', 'Leisure', 3)],
             [sg.Text(key='-CLASS_SELECTION-', text=class_settings.display())]]
-                
-    timer_layout = [[sg.Text(key='-TIMER-', text='00:30', size=(4, 1), 
-            font=('Helvetica', 32), justification='center')],
-        [Button('-RUN_PAUSE-', '▶️', color=('white', '#001480'), disabled=True),
+
+    timer = [[sg.Text(key='-TIMER-', text='00:30', size=(4, 1), 
+            font=('Helvetica', 32), justification='center')]]
+    
+    controls =[[Button('-RUN_PAUSE-', '▶️', color=('white', '#001480'), disabled=True),
             Button('-RESET-', '🔄', color=('white', '#007339')),
-            Button('-EXIT-', 'Exit', color=('white', '#8b1a1a'))]]
+            Button('-EXIT-', 'X', color=('white', '#8b1a1a'))]]
 
     layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
     layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
     layout = [[sg.Column(key='-CONTROLS-', vertical_alignment='top', layout=folder_browser 
-        + files + session + layout_const + layout_class + timer_layout), 
+        + session + layout_const + layout_class + timer + files + controls), 
         sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
     window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
                        location=(0, 0), size=(1920, 1080), background_color='#272927',
@@ -274,21 +267,17 @@ def main():
 
     while True:
         event, values = window.read(timeout=10)#10000)#100)#15)
-        # print(f"event: {event}\nvalues: {values}\nsession mode: {session_mode}\ntime diff: {time_as_string(clock.time_diff)}\n\n")
-
         if event in (sg.WIN_CLOSED, '-EXIT-'):
             break
 
         elif event == '-FOLDER_BROWSER-':
             folder = values['-FOLDER_BROWSER-'] # Get the folder containing the images from the user
-            img_types = (".png", ".jpg", ".jpeg", ".tiff", ".bmp") # PIL supported image types
-
             if folder:
                 flist0 = os.listdir(folder) # get list of files in folder
 
                 # create sub list of image files (no sub folders, no wrong file types)
                 fnames = [f for f in flist0 if os.path.isfile(
-                    os.path.join(folder, f)) and f.lower().endswith(img_types)]
+                    os.path.join(folder, f)) and f.lower().endswith(IMG_TYPES)]
 
                 random.shuffle(fnames) # Randomly shuffle the order of files
                 num_files = len(fnames)  # number of images found
@@ -299,38 +288,9 @@ def main():
                     window['-LISTBOX-'].update(values=fnames)
                     window['-FILE_NUM-'].update(f'File 1 of {num_files}')
                     window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
+                    settings['-FOLDER-'] = folder
                 else:
                     sg.popup('No images in folder')
-                #     raise SystemExit()
-            else:
-                sg.popup('Cancelling')
-            #     raise SystemExit()
-
-
-            # if not folder:
-            #     # TODO Should gracefully allow re-browsing
-            #     sg.popup_cancel('Cancelling')
-            #     raise SystemExit()
-
-            # flist0 = os.listdir(folder) # get list of files in folder
-
-            # # create sub list of image files (no sub folders, no wrong file types)
-            # fnames = [f for f in flist0 if os.path.isfile(
-            #     os.path.join(folder, f)) and f.lower().endswith(img_types)]
-
-            # random.shuffle(fnames) # Randomly shuffle the order of files
-            # num_files = len(fnames)  # number of images found
-            # if num_files == 0:
-            #     # TODO Should gracefully allow re-browsing
-            #     sg.popup('No files in folder')
-            #     raise SystemExit()
-
-            # del flist0  # file list object deleted since it is no longer needed
-            # filename = os.path.join(folder, fnames[0])  # initialize to the first file in the list
-            # window['-IMAGE-'].update(visible=True)
-            # window['-LISTBOX-'].update(values=fnames)
-            # window['-FILE_NUM-'].update(f'File 1 of {num_files}')
-            # window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
         
         elif event == '-RESET-':
             clock.reset_clock()
@@ -376,6 +336,28 @@ def main():
             class_settings, clock = check_class_choice(event, values, class_settings, clock)
             window['-CLASS_SELECTION-'].update(class_settings.display())
 
+        if settings['-FOLDER-'] and not settings_load:
+            folder = settings['-FOLDER-']
+            flist0 = os.listdir(folder) # get list of files in folder
+
+            # create sub list of image files (no sub folders, no wrong file types)
+            fnames = [f for f in flist0 if os.path.isfile(
+                os.path.join(folder, f)) and f.lower().endswith(IMG_TYPES)]
+
+            random.shuffle(fnames) # Randomly shuffle the order of files
+            num_files = len(fnames)  # number of images found
+            if num_files != 0:
+                del flist0  # file list object deleted since it is no longer needed
+                filename = os.path.join(folder, fnames[0])  # initialize to the first file in the list
+                window['-IMAGE-'].update(visible=True)
+                window['-LISTBOX-'].update(values=fnames)
+                window['-FILE_NUM-'].update(f'File 1 of {num_files}')
+                window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
+                settings['-FOLDER-'] = folder
+                settings_load = True
+            else:
+                sg.popup('No images in folder')
+
         if folder and filename:
             window['-PREV-'].update(disabled=False)
             window['-NEXT-'].update(disabled=False)
@@ -392,7 +374,6 @@ def main():
             window.Refresh()
 
         if clock.time_diff <= 0 and not clock.paused:
-            # print("\nRESET\n")
             if session_mode == Session_Mode.CLASS:
                 class_settings.increment()
                 clock.next_timeout = class_settings.class_poses[1]
@@ -404,7 +385,6 @@ def main():
             filename = os.path.join(folder, fnames[img])
 
         elif clock.time_diff > 0 and not clock.paused:
-            # print("\nTIMER RUNNING\n")
             clock.decrement()
 
         window['-TIMER-'].update(time_as_string(clock.time_diff))
