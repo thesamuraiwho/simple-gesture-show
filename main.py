@@ -17,16 +17,15 @@ from enum import Enum
 
 # TODO Feat: List thumbnails instead of file names
 # TODO Feat: Recursive file directory access
-# TODO Feat: Set increments via a input box
 # TODO Feat: Add controls for basic image maniuplation like flipping and grayscale
 # TODO Feat: Thumbnails in temporary directory and delete this directory when program exits
 #   to avoid redoing image processing work
 
 # Constants
-SEC = 100 # 1000ms == 1 sec
-MIN = 6000 # 60000ms == 1 min
+SEC = 100 # 1 sec
+MIN = 6000 # 1 min
 IMG_TYPES = (".png", ".jpg", ".jpeg", ".tiff", ".bmp") # PIL supported image types
-MODES_KEYS = ["-SESSION_CONST_MODE-", "-SESSION_CLASS_MODE-"]
+MODES_KEYS = ["-CONST_MODE-", "-CLASS_MODE-"]
 MODES_VALUES = ["-LAYOUT_CONST-", "-LAYOUT_CLASS-"]
 
 CONST_KEYS = ['-CONST_30SEC-', '-CONST_1MIN-', '-CONST_2MIN-', '-CONST_5MIN-', 
@@ -34,14 +33,14 @@ CONST_KEYS = ['-CONST_30SEC-', '-CONST_1MIN-', '-CONST_2MIN-', '-CONST_5MIN-',
 CONST_VALUES = [int(0.5 * MIN), MIN, 2 * MIN, 5 * MIN, 10 * MIN, 15 * MIN, 30 * MIN, 60 * MIN]
 
 CLASS_KEYS = ['-CLASS_DEFAULT-', '-CLASS_RAPID-', '-CLASS_LEISURE-']
-test_class = [[[1, 2 * SEC], [2, 3 * SEC], [3, 4 * SEC]],
-    [[4, 5 * SEC], [5, 7 * SEC], [6, 10 * SEC]], 
-    [[3, 3 * SEC], [4, 4 * SEC], [5, 5 * SEC]]]
+# test_class = [[[1, 2 * SEC], [2, 3 * SEC], [3, 4 * SEC]],
+#     [[4, 5 * SEC], [5, 7 * SEC], [6, 10 * SEC]], 
+#     [[3, 3 * SEC], [4, 4 * SEC], [5, 5 * SEC]]]
 CLASS_DEFAULT = [[10, int(0.5 * MIN)], [5, MIN], [2, 5 * MIN], [1, 10 * MIN]]
 CLASS_RAPID = [[4, int(0.25 * MIN)], [4, int(0.5 * MIN)], [2, MIN], [2, 5 * MIN]]
 CLASS_LEISURE = [[10, MIN], [4, 5 * MIN], [2, 15 * MIN], [1, 30 * MIN]]
 
-class Session_Mode(Enum):
+class Mode(Enum):
     CONSTANT = 0
     CLASS = 1
 
@@ -76,6 +75,9 @@ class Clock():
         self.current_time = time_as_int()
         self.time_diff = self.end_time - self.current_time
 
+    def set_next_timeout(self, timeout):
+        self.next_timeout = timeout
+
 class Class_Mode():
     def __init__(self, class_list=CLASS_DEFAULT, class_mode_str='Default', 
         class_index=0, class_poses=[0, CLASS_DEFAULT[0][1]]):
@@ -107,12 +109,14 @@ class Class_Mode():
 
     def increment(self):
         # If we complete a class mode session, reset to the beginning
-        if self.class_index == len(self.class_list) - 1 and self.class_poses[0] == self.class_list[self.class_index][0] - 1:
+        length = len(self.class_list) - 1
+        max_poses = self.class_list[self.class_index][0] - 1
+        if self.class_index == length and self.class_poses[0] == max_poses:
             self.class_index = 0
             self.class_poses = [0, self.class_list[0][1]]
         # If we complete all the poses but not the class mode session, increment the class index
         # and reset the class poses counter and set the timeout to the new class index
-        elif self.class_index < len(self.class_list) - 1 and self.class_poses[0] == self.class_list[self.class_index][0] - 1:
+        elif self.class_index < length - 1 and self.class_poses[0] == max_poses:
             self.class_index += 1
             self.class_poses = [0, self.class_list[self.class_index][1]]
         else:
@@ -212,12 +216,10 @@ def main():
     settings = sg.UserSettings()
     clock = Clock()
     class_settings = Class_Mode()
-    session_mode = Session_Mode.CONSTANT
-    folder = ""
-    filename = ""
+    mode = Mode.CONSTANT
+    filename = folder = ""
     fnames = []
-    img = 0
-    num_files = 0
+    num_files = img = 0
     file_num_display_elem = sg.Text(key='-FILE_NUM-', text='', size=(15,1))
     image_elem = sg.Image(key='-IMAGE_ELEM-', data=None)
     col = [[image_elem]]
@@ -233,8 +235,8 @@ def main():
             file_num_display_elem]]
 
     session = [[sg.Text('Session Type')], [sg.HSeparator()],
-        [Radio('-SESSION_CONST_MODE-', 'Constant Mode', 1, default=True)], 
-        [Radio('-SESSION_CLASS_MODE-', 'Class Mode', 1)]]
+        [Radio('-CONST_MODE-', 'Constant Mode', 1, default=True)], 
+        [Radio('-CLASS_MODE-', 'Class Mode', 1)]]
 
     const_mode = [[sg.Text('Constant Mode Options')], [sg.HSeparator()],
         [Radio('-CONST_30SEC-', '30 sec', 2, default=True), Radio('-CONST_1MIN-', '1 min', 2),
@@ -289,6 +291,7 @@ def main():
                     window['-FILE_NUM-'].update(f'File 1 of {num_files}')
                     window['-IMAGE_ELEM-'].update(data=get_img_data(filename, first=True))
                     settings['-FOLDER-'] = folder
+                    clock.reset_clock()
                 else:
                     sg.popup('No images in folder')
         
@@ -316,14 +319,14 @@ def main():
         elif event in MODES_KEYS:
             for choice in range(len(MODES_KEYS)):
                 if values[MODES_KEYS[choice]]:
-                    session_mode = Session_Mode(choice)
+                    mode = Mode(choice)
                     new_layout = MODES_VALUES[choice]
                     for lay in MODES_VALUES:
                         window[lay].update(visible=False)
                     window[new_layout].update(visible=True)
                     break
 
-            if session_mode == Session_Mode.CONSTANT:
+            if mode == Mode.CONSTANT:
                 clock = check_const_choice(values, clock)
             else:
                 class_settings, clock = check_class_choice(event, values, class_settings, clock)
@@ -374,9 +377,9 @@ def main():
             window.Refresh()
 
         if clock.time_diff <= 0 and not clock.paused:
-            if session_mode == Session_Mode.CLASS:
+            if mode == Mode.CLASS:
                 class_settings.increment()
-                clock.next_timeout = class_settings.class_poses[1]
+                clock.set_next_timeout(class_settings.class_poses[1])
                 window['-CLASS_SELECTION-'].update(class_settings.display())
             clock.reset_clock()
             img += 1

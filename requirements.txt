@@ -2,3 +2,4 @@ pysimplegui
 pillow
 requests
 python-dotenv
+pyinstaller
