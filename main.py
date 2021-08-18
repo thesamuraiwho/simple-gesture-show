@@ -259,7 +259,7 @@ def main():
         sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
     window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
         location=(0, 0), size=(1920, 1080), background_color='#272927',
-        resizable=True, use_default_focus=False).Finalize()
+        resizable=True, use_default_focus=False, icon='icon.ico').Finalize()
     window.Maximize()
 
     while True:
