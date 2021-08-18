@@ -319,7 +319,7 @@ def main():
                     for lay in MODES_VALUES:
                         window[lay].update(visible=False)
                     window[new_layout].update(visible=True)
-                    clock.pause()
+                    clock.paused = True
                     clock.reset_clock()
                     window['-RUN_PAUSE-'].update('▶️')
                     break
