@@ -1,4 +1,7 @@
-venv
-.env
+env
 progress_photos
 .vscode
+__pycache__
+build
+dist
+simple-gesture-show.spec

@@ -75,9 +75,6 @@ class Clock():
         self.current_time = time_as_int()
         self.time_diff = self.end_time - self.current_time
 
-    def set_next_timeout(self, timeout):
-        self.next_timeout = timeout
-
 class Class_Mode():
     def __init__(self, class_list=CLASS_DEFAULT, class_mode_str='Default', 
         class_index=0, class_poses=[0, CLASS_DEFAULT[0][1]]):
@@ -116,7 +113,7 @@ class Class_Mode():
             self.class_poses = [0, self.class_list[0][1]]
         # If we complete all the poses but not the class mode session, increment the class index
         # and reset the class poses counter and set the timeout to the new class index
-        elif self.class_index < length - 1 and self.class_poses[0] == max_poses:
+        elif self.class_index < length and self.class_poses[0] == max_poses:
             self.class_index += 1
             self.class_poses = [0, self.class_list[self.class_index][1]]
         else:
@@ -132,13 +129,12 @@ class Class_Mode():
         cl ="\nMode Poses\n"
         for i in range(len(self.class_list)):
 	        cl += f"Poses: {self.class_list[i][0]} Timeout: {time_as_string(self.class_list[i][1])}\n"
-        
         return cl
 
 def Radio(key, text, group_id, default=False): 
     return sg.Radio(key=key, text=text, group_id=group_id, default=default, enable_events=True)
 
-def Button(key, text, color="#1f6650", font=('Helvetica', 12), disabled=False): 
+def Button(key, text, color="#1f6650", font=('Arial', 12), disabled=False): 
     return sg.Button(key=key, button_text=text, button_color=color, size=(8, 2), font=font, disabled=disabled)
 
 def time_as_int():
@@ -223,7 +219,6 @@ def main():
     file_num_display_elem = sg.Text(key='-FILE_NUM-', text='', size=(15,1))
     image_elem = sg.Image(key='-IMAGE_ELEM-', data=None)
     col = [[image_elem]]
-
     settings_load = False
     
     folder_browser = [[sg.FolderBrowse(button_text="Browse", 
@@ -254,8 +249,8 @@ def main():
             font=('Helvetica', 32), justification='center')]]
     
     controls =[[Button('-RUN_PAUSE-', '▶️', color=('white', '#001480'), disabled=True),
-            Button('-RESET-', '🔄', color=('white', '#007339')),
-            Button('-EXIT-', 'X', color=('white', '#8b1a1a'))]]
+        Button('-RESET-', 'RESET', color=('white', '#007339')),
+        Button('-EXIT-', 'EXIT', color=('white', '#8b1a1a'))]]
 
     layout_const = [[sg.Column(const_mode, key="-LAYOUT_CONST-")]]
     layout_class = [[sg.Column(class_mode, key="-LAYOUT_CLASS-", visible=False)]]
@@ -263,8 +258,8 @@ def main():
         + session + layout_const + layout_class + timer + files + controls), 
         sg.Column(key='-IMAGE-', vertical_alignment='top', layout=col, visible=False)]]
     window = sg.Window('Simple Gesture Show', layout, return_keyboard_events=True,
-                       location=(0, 0), size=(1920, 1080), background_color='#272927',
-                       resizable=True, use_default_focus=False).Finalize()
+        location=(0, 0), size=(1920, 1080), background_color='#272927',
+        resizable=True, use_default_focus=False).Finalize()
     window.Maximize()
 
     while True:
@@ -324,6 +319,9 @@ def main():
                     for lay in MODES_VALUES:
                         window[lay].update(visible=False)
                     window[new_layout].update(visible=True)
+                    clock.pause()
+                    clock.reset_clock()
+                    window['-RUN_PAUSE-'].update('▶️')
                     break
 
             if mode == Mode.CONSTANT:
@@ -379,7 +377,7 @@ def main():
         if clock.time_diff <= 0 and not clock.paused:
             if mode == Mode.CLASS:
                 class_settings.increment()
-                clock.set_next_timeout(class_settings.class_poses[1])
+                clock.next_timeout = class_settings.class_poses[1]
                 window['-CLASS_SELECTION-'].update(class_settings.display())
             clock.reset_clock()
             img += 1
