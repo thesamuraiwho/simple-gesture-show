@@ -20,6 +20,7 @@ from enum import Enum
 # TODO Feat: Add controls for basic image maniuplation like flipping and grayscale
 # TODO Feat: Thumbnails in temporary directory and delete this directory when program exits
 #   to avoid redoing image processing work
+# TODO Feat: Image controls: grayscale, flip vertical and horizontal
 
 # Constants
 SEC = 100 # 1 sec
@@ -33,9 +34,6 @@ CONST_KEYS = ['-CONST_30SEC-', '-CONST_1MIN-', '-CONST_2MIN-', '-CONST_5MIN-',
 CONST_VALUES = [int(0.5 * MIN), MIN, 2 * MIN, 5 * MIN, 10 * MIN, 15 * MIN, 30 * MIN, 60 * MIN]
 
 CLASS_KEYS = ['-CLASS_DEFAULT-', '-CLASS_RAPID-', '-CLASS_LEISURE-']
-# test_class = [[[1, 2 * SEC], [2, 3 * SEC], [3, 4 * SEC]],
-#     [[4, 5 * SEC], [5, 7 * SEC], [6, 10 * SEC]], 
-#     [[3, 3 * SEC], [4, 4 * SEC], [5, 5 * SEC]]]
 CLASS_DEFAULT = [[10, int(0.5 * MIN)], [5, MIN], [2, 5 * MIN], [1, 10 * MIN]]
 CLASS_RAPID = [[4, int(0.25 * MIN)], [4, int(0.5 * MIN)], [2, MIN], [2, 5 * MIN]]
 CLASS_LEISURE = [[10, MIN], [4, 5 * MIN], [2, 15 * MIN], [1, 30 * MIN]]
@@ -145,7 +143,7 @@ def time_as_string(time):
         time = 0
     return '{:02d}:{:02d}'.format(((time) // 100) // 60, ((time) // 100) % 60)
 
-def get_img_data(f, maxsize=(1600, 950), first=False):#(1200, 850), first=False):
+def get_img_data(f, maxsize=(1200, 800), first=False):#(1200, 850), first=False):
     """Generate image data using PIL
     """
 
